@@ -1,0 +1,74 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>LISTA DE EMPLEADOS</h1>  
+        <ol id="lista-empleados"></ol>
+        
+        <div class="container-boton_agregar">
+            <a href="/empleados/agregar-empleados" class="boton-agregar">Agregar Empleado</a>
+        </div>
+    </main>
+
+    <script type="module">
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+
+                const response = await fetch('/api/empleados'); 
+                const empleados = await response.json();
+    
+                const lista = document.getElementById('lista-empleados');
+                lista.innerHTML = ''; 
+
+                // Si no hay registros, mostrar mensaje de error
+                if (empleados.mensaje) { 
+                    lista.innerHTML = `<p style="color: red; text-align: center;">${empleados.mensaje}</p>`;
+                    return;
+                }
+    
+                // Crear elementos HTML
+                empleados.forEach(empleado => {
+                    const li = document.createElement('li');
+                    li.classList.add('lista-item');
+                    li.textContent = `
+                                        ${empleado.nombre.toUpperCase()} | 
+                                        ${empleado.cargo.toUpperCase()}
+                                    `;
+
+                    // Crear botón para eliminar empleado
+                    const btnEliminar = document.createElement('button');
+                    btnEliminar.textContent = 'Eliminar';
+
+                    btnEliminar.onclick = async () => {
+                        try {
+                            const deleteResponse = await fetch('/api/empleados/delete', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: empleado.id })
+                            });
+
+                            const result = await deleteResponse.json();
+                            alert(result.message);
+                            window.location.reload();
+                        } catch (error) {
+                            console.error("Error eliminando empleado:", error);
+                        }
+                    };
+
+                    // Agregar botón al elemento y añadir al listado
+                    li.appendChild(btnEliminar);
+                    lista.appendChild(li);
+                });
+    
+            } catch (error) {
+                console.error("Error obteniendo empleados:", error);
+            }
+        });
+
+    </script>
+    
+</Layout>

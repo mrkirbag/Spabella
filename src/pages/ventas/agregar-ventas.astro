@@ -1,0 +1,115 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+    const fechaHoy = new Date();
+    const ano = fechaHoy.getFullYear();
+    const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0'); 
+    const dia = String(fechaHoy.getDate()).padStart(2, '0');
+    let fechaCompleta = `${ano}-${mes}-${dia}`;
+
+---
+
+<Layout>
+    
+    <main class="container-general">
+        <h1>AGREGAR VENTA</h1>
+
+        <form action="/agregar-ventas" id="formulario">
+            <input type="date" name="fecha" id="fecha" value={fechaCompleta}/>
+            <br />
+            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
+            <br />
+            <input type="text" name="monto" id="monto" placeholder="Monto en dólares" />
+            <br />
+            <select name="empleado-id" id="empleado-id">
+                <option value="">Selecciona un Empleado</option>
+            </select>
+            <br />
+            <select name="servicio-id" id="servicio-id">
+                <option value="">Selecciona un Servicio</option>
+            </select>
+            <br />
+            <button type="submit" style="margin-top: 40px;">Agregar</button>
+        </form>
+
+    <script type="module">
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const empleadoSelect = document.getElementById("empleado-id");
+            const servicioSelect = document.getElementById("servicio-id");
+
+            try {
+                const response = await fetch("/api/ventas/rellenar-selects");
+                const data = await response.json();
+
+                // Rellenar select de empleados
+                data.empleados.forEach(empleado => {
+                    const option = document.createElement("option");
+                    option.value = empleado.id;
+                    option.textContent = `${empleado.nombre.toUpperCase()} - ${empleado.cargo.toUpperCase()}`;
+                    empleadoSelect.appendChild(option);
+                });
+
+                // Rellenar select de servicios
+                data.servicios.forEach(servicio => {
+                    const option = document.createElement("option");
+                    option.value = servicio.id;
+                    option.textContent = `${servicio.nombre.toUpperCase()}`;
+                    servicioSelect.appendChild(option);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar empleados y servicios:", error);
+            }
+        });
+
+        const formulario = document.getElementById('formulario');
+
+        formulario.addEventListener('submit', (event) => {
+        
+            event.preventDefault();
+
+            const fecha = document.getElementById('fecha').value;
+            const descripcion = document.getElementById('descripcion').value;
+            const monto = document.getElementById('monto').value;
+            const empleadoId = document.getElementById('empleado-id').value;
+            const servicioId = document.getElementById('servicio-id').value;
+
+            // Validar campos
+            if (fecha === '' || monto === '' || empleadoId === '' || servicioId === '' || descripcion === '') {
+                alert('Por favor, rellena todos los campos.');
+                formulario.reset();
+                return;
+            }
+            if (!/^\d*\.?\d+$/.test(monto)) {
+                alert('El monto debe ser un número positivo.');
+                formulario.reset();
+                return;
+            }
+
+            // Enviar datos al servidor
+            const url = "/api/ventas";
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fecha, descripcion, monto, empleadoId, servicioId }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Algo está mal con tu FETCH', response.status );
+                } 
+                return response.json();
+            })
+            .then((data) => {
+                console.log(data);
+                formulario.reset();
+                window.location.href = '/ventas';
+            })
+        });
+            
+
+    </script>
+
+</Layout>

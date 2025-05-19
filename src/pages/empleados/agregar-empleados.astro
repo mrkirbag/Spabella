@@ -1,0 +1,62 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>AGREGAR EMPLEADO</h1>
+
+        <form action="/agregar-empleado" id="formulario">
+            <input type="text" name="nombre" id="nombre" placeholder="Nombre y Apellido" />
+            <br />
+            <input type="text" name="cargo" id="cargo" placeholder="Cargo" />
+            <br />
+            <button type="submit" style="margin-top: 20px;">Agregar</button>
+        </form>
+    </main>
+
+
+    <script type="module" >
+
+        const formulario = document.getElementById('formulario');
+
+        formulario.addEventListener('submit', (event) => { 
+            
+            event.preventDefault();
+            
+            const nombre = document.getElementById('nombre').value;
+            const cargo = document.getElementById('cargo').value;
+
+            // Validar campos
+            if (nombre === '' || cargo === '') {
+                alert('Por favor, rellena todos los campos.');
+                formulario.reset();
+                return;
+            }
+
+            // Enviar datos al servidor
+            const url = "/api/empleados";
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nombre, cargo }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Algo está mal con tu FETCH', response.status );
+                } 
+                return response.json();
+            })
+            .then((data) => {
+                console.log(data);
+                formulario.reset();
+                window.location.href = '/empleados';
+            })
+        });
+
+    </script>
+
+</Layout>

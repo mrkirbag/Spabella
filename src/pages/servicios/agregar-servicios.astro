@@ -1,0 +1,76 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>AGREGAR SERVICIO</h1>
+
+        <form action="/agregar-servicios" id="formulario">
+            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
+            <br />
+            <input type="text" name="porcentaje-spa" id="porcentaje-spa" placeholder="Porcentaje de SPA" />
+            <br />
+            <input type="text" name="porcentaje-empleado" id="porcentaje-empleado" placeholder="Porcentaje de Empleado" />
+            <button type="submit" style="margin-top: 40px;">Agregar</button>
+        </form>
+    </main>
+
+    <script type="module">
+
+        const formulario = document.getElementById('formulario');
+
+        formulario.addEventListener('submit', (event) => {  
+
+            event.preventDefault();
+
+            const descripcion = document.getElementById('descripcion').value;
+            const porcentajeSpa = document.getElementById('porcentaje-spa').value;
+            const porcentajeEmpleado = document.getElementById('porcentaje-empleado').value;
+
+            let sumaPorcentaje = Number(porcentajeSpa) + Number(porcentajeEmpleado);
+            console.log(sumaPorcentaje);
+
+            // Validar campos
+            if (descripcion === '' || porcentajeSpa === '' || porcentajeEmpleado === '') {
+                alert('Por favor, rellena todos los campos.');
+                formulario.reset();
+                return;
+            }
+            if (!/^\d*\.?\d+$/.test(porcentajeSpa) || !/^\d*\.?\d+$/.test(porcentajeEmpleado)) {
+                alert('El porcentaje debe ser un número positivo.');
+                formulario.reset();
+                return;
+            }
+            if(sumaPorcentaje !== 100) {
+                alert('La suma del porcentaje de SPA y Empleado deben ser iguales a 100%.');
+                formulario.reset();
+                return;
+            }
+
+            // Enviar datos al servidor
+            const url = "/api/servicios";
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ descripcion, porcentajeSpa, porcentajeEmpleado }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Algo está mal con tu FETCH', response.status );
+                } 
+                return response.json();
+            })
+            .then((data) => {
+                console.log(data);
+                formulario.reset();
+                window.location.href = '/servicios';
+            })
+        });
+
+    </script>
+
+</Layout>

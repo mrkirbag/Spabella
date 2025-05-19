@@ -1,0 +1,103 @@
+---
+import EmpleadosSVG from '../assets/empleados.svg';
+import ServiciosSVG from '../assets/servicios.svg';
+import VentasSVG from '../assets/ventas.svg';
+import ReportesSVG from '../assets/reportes.svg';
+import RecordatoriosSVG from '../assets/recordatorios.svg';
+---
+
+<nav>
+    <ul>
+        <li class="container-logo">
+            <img src="/logo.png" alt="logo" width="60" height="60" />
+        </li>
+        <li>
+            <a href="/empleados">
+                <EmpleadosSVG width={60} height={60} />
+                <span>Empleados</span>
+            </a>
+        </li>
+        <li>
+            <a href="/servicios">
+                <ServiciosSVG width={60} height={60} />
+                <span>Servicios</span>
+            </a>
+        </li>
+        <li>
+            <a href="/ventas">
+                <VentasSVG width={60} height={60} />
+                <span>Ventas</span>
+            </a>
+        </li>
+        <li>
+            <a href="/reportes">
+                <ReportesSVG width={60} height={60} />
+                <span>Facturas</span>
+            </a>
+        </li>
+        <li>
+            <a href="#">
+                <RecordatoriosSVG width={60} height={60} />
+                <span>Calendario</span>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<style>
+    nav{
+        display: flex; 
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        border-radius: 10px;
+        margin-bottom: 30px;
+
+        margin-left: 20%;
+        margin-right: 20%;
+        padding: 2rem 1rem;
+
+        backdrop-filter: blur(8px);
+        border-radius: 12px;
+        box-shadow: inset 10px 10px 80px white;
+    }
+
+    ul{
+        display: flex;
+        flex-direction: row;
+        gap: 2rem;
+        list-style: none;
+    }
+
+    .container-logo{
+        margin-right: 2.3rem;
+        transform: translateY(10px);
+
+    }
+
+    li{
+        margin-right: 1rem;
+
+    }
+
+    a{
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;    
+
+        & span{
+            font-size: .7rem;
+            font-weight: 600;
+            color: #4D4D4D;
+        }
+
+        &:hover span{
+            color: #DDB57F;
+            transition: all .25s ease-in-out;
+        }
+    }
+
+
+
+</style>

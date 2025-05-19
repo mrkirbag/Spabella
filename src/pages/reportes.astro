@@ -1,0 +1,162 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>FACTURACIÓN</h1>
+
+        <div class="modulo-busqueda">
+            <input type="date" id="fechaDesde" />
+            <input type="date" id="fechaHasta" />
+            <button id="buscarFacturacion">Generar Facturación</button>
+        </div>
+
+        <div id="facturaImprimir" class="facturacion-imprimir">
+            <h2 class="oculto">Reporte de Facturación</h2>
+            <div id="listaFacturacion" class="lista-facturacion"></div>
+        </div>
+
+        <div class="boton-impresion">
+            <button id="imprimirFacturacion" class="oculto">Imprimir Facturación</button>
+        </div>
+    </main>
+
+
+
+    <script type="module">
+
+        document.getElementById("buscarFacturacion").addEventListener("click", async () => {
+
+            const fechaDesde = document.getElementById("fechaDesde").value;
+            const fechaHasta = document.getElementById("fechaHasta").value;
+
+            const response = await fetch(`/api/reportes-ventas?desde=${fechaDesde}&hasta=${fechaHasta}`);
+            const facturacion = await response.json();
+            const listaFacturacion = document.getElementById("listaFacturacion");
+
+            listaFacturacion.innerHTML = ""; 
+
+            // Si no hay registros, mostrar mensaje de error
+            if (facturacion.mensaje) { 
+                listaFacturacion.innerHTML = `<p style="color: red; text-align: center;">${facturacion.mensaje}</p>`;
+                return;
+            }
+
+            facturacion.forEach(empleada => {
+
+                // Crear tabla y mostrar encabezado
+
+                const tabla = document.createElement("table");
+                tabla.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th colspan="6">${empleada.nombre.toUpperCase()} | Total Empleado: ${empleada.totalEmpleado.toFixed(2)}$ | Total Spa: ${empleada.totalSpa.toFixed(2)}$</th>
+                        </tr>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Servicio</th>
+                            <th>Descripción</th>
+                            <th>Total</th>
+                            <th>Empleado</th>
+                            <th>Spa</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                `;
+
+                const tbody = tabla.querySelector("tbody");
+
+
+                empleada.servicios.forEach(servicio => {
+
+                    // Crear fila y mostrar datos
+
+                    // Formatear fecha
+                    const fechaObjeto = new Date(servicio.fecha + "T00:00:00");
+                    const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                    const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+
+                    const fila = document.createElement("tr");
+                    fila.innerHTML = `
+                        <td>${fechaFormateada}</td>
+                        <td>${servicio.servicio.toUpperCase()}</td>
+                        <td>${servicio.descripcion}</td>
+                        <td>${servicio.montoTotal}$</td>
+                        <td>${servicio.montoEmpleado}$</td>
+                        <td>${servicio.montoSpa}$</td>
+                    `;
+                    tbody.appendChild(fila);
+                });
+
+                listaFacturacion.appendChild(tabla);
+
+            });
+            
+            // Mostrar boton de impresión y titulo
+
+            document.getElementById("imprimirFacturacion").classList.add("visible");
+            document.getElementById("imprimirFacturacion").classList.remove("oculto");
+
+            document.querySelector("h2").classList.add("visible");
+            document.querySelector("h2").classList.remove("oculto");
+            
+
+    
+        });
+
+        // Imprimir facturación
+        document.getElementById("imprimirFacturacion").addEventListener("click", () => {
+            const contenido = document.getElementById("facturaImprimir").innerHTML;
+            const ventana = window.open('', '', 'width=800,height=600');
+            
+            ventana.document.body.innerHTML = `
+                <html>
+                    <head>
+                        <title>Reporte de Facturación</title>
+                        <style>
+                            body { 
+                                font-family: Arial, sans-serif; 
+                                margin: 20px; 
+                            }
+                            table { 
+                                width: 100%; 
+                                border-collapse: collapse;
+                                margin-bottom: 1.5rem;
+                            }
+                            th, td { 
+                                border: 1px solid #000; 
+                                padding: 8px; 
+                                text-align: left; 
+                            }
+                            thead { 
+                                background: #ddd; 
+                                font-weight: bold; 
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${contenido}
+                    </body>
+                </html>
+            `;
+
+            
+            ventana.document.close();
+            ventana.print();
+        });
+
+    </script>
+
+    <style>
+
+        /* CSS de impresion */
+        @media print {
+            button { 
+                display: none !important; 
+            }
+        }
+
+    </style>
+</Layout>

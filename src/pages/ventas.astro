@@ -1,0 +1,100 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+    const fechaHoy = new Date();
+    const ano = fechaHoy.getFullYear();
+    const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0'); 
+    const dia = String(fechaHoy.getDate()).padStart(2, '0');
+    let fechaCompleta = `${ano}-${mes}-${dia}`;
+---
+
+
+<Layout>
+
+    <main class="container-general">
+        <h1>LISTA DE VENTAS</h1> 
+
+        <div class="modulo-busqueda">
+            <input type="date" id="fechaSeleccionada" value={fechaCompleta} />
+            <button id="buscarVentas">Buscar Ventas</button>
+        </div>
+
+
+        <ol id="listaVentas"></ol>
+
+        <div class="container-boton_agregar">
+            <a href="/ventas/agregar-ventas" class="boton-agregar">Agregar Venta</a>
+        </div>
+
+    </main>
+
+    <script type="module">
+
+        const button = document.getElementById("buscarVentas");
+
+        button.addEventListener("click", async () => {
+            const fecha = document.getElementById("fechaSeleccionada").value;
+
+            const response = await fetch(`/api/ventas/vista-ventas?fecha=${fecha}`);
+            const ventas = await response.json();
+
+            const listaVentas = document.getElementById("listaVentas");
+
+            listaVentas.innerHTML = ""; // Limpiar antes de agregar nuevas ventas
+
+            // Si no hay registros, mostrar mensaje de error
+            if (ventas.mensaje) { 
+                listaVentas.innerHTML = `<p style="color: red; text-align: center;">${ventas.mensaje}</p>`;
+                return;
+            }
+
+            ventas.forEach(venta => {
+
+                // Formatear fecha
+                const fechaObjeto = new Date(venta.fecha + "T00:00:00");
+                const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+
+                // Crear elemento HTML
+                const text = `
+                                ${fechaFormateada} | 
+                                ${venta.empleado.toUpperCase()} | 
+                                Total: ${venta.monto}$<br>
+                                ${venta.servicio.toUpperCase()} - 
+                                ${venta.descripcion}
+                            `;
+                            
+                const li = document.createElement("li");
+                li.classList.add("lista-item");
+                li.innerHTML = text;
+
+                // Crear botón para eliminar venta
+                const btnEliminar = document.createElement('button');
+                btnEliminar.textContent = 'Eliminar';
+
+                btnEliminar.onclick = async () => {
+                    try {
+                        const deleteResponse = await fetch('/api/ventas/delete', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: venta.id })
+                        });
+
+                        const result = await deleteResponse.json();
+                        alert(result.message);
+                        window.location.reload();
+                    } catch (error) {
+                        console.error("Error eliminando venta:", error);
+                    }
+                };
+
+                // Agregar botón al elemento y añadir al listado
+                li.appendChild(btnEliminar);
+                listaVentas.appendChild(li);
+            });     
+        });
+    </script>
+
+    
+</Layout>
+

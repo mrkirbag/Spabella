@@ -1,0 +1,198 @@
+---
+---
+
+<style is:global>
+
+    .container-general { 
+        margin-left: 20%;
+        margin-right: 20%;
+        padding: 2rem 0;
+
+        backdrop-filter: blur(8px);
+        border-radius: 12px;
+        box-shadow: inset 10px 10px 30px white;
+    }     
+
+    h1{
+        text-align: center;
+        margin-bottom: .75lh;
+        font-size: 2rem;
+    }
+
+    form{
+        margin: 0 auto;
+        width: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    input[type="text"]{
+        border: none;
+        border-bottom: 1.5px solid #4D4D4D;
+        width: 300px;
+        height: 50px;
+        background-color: transparent;
+        backdrop-filter: blur(10px);
+
+        &:focus{
+            outline: none;
+            border-bottom: 2px solid #DDB57F;
+        }
+    }
+
+    button{
+        background: #DDB57F;
+        color: #4D4D4D;
+        border: none;
+        height: 40px;
+        width: 100px;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        box-shadow:  0 2px 2px #00000029 ;
+
+        &:hover{
+            opacity: 0.8;
+        }
+    }
+
+    .lista-item {
+        text-align: left;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        padding-left: 20%;
+        padding-right: 20%;   
+        margin-top: .65lh;
+        margin-bottom: 1rem;
+    }
+
+    .container-boton_agregar{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .boton-agregar {
+        display: inline-block;
+        justify-content: center;
+        margin-top: 1.5lh;
+        font-size: 1.25rem;
+        color: #4D4D4D;
+        position: relative;
+        transition: all .4s ease-in-out;
+
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 0;
+            height: 1.5px;
+            background: #DDB57F;
+            transition: all .4s ease-in-out;
+        }
+
+        &:hover::after {
+            width: 100%;
+        }
+
+        &:hover {
+            color: #DDB57F;
+        }
+    }
+
+    input[type="date"]{
+        border: none;
+        border-bottom: 2px solid #DDB57F;
+        width: 200px;
+        height: 35px;
+        background-color: transparent;
+        backdrop-filter: blur(10px);
+
+        &:hover{
+            cursor: pointer;
+        }
+        &:focus{
+            outline: none;
+            border-bottom: 2px solid #4D4D4D;
+        }
+    }
+
+    select{
+        border: none;
+        border-bottom: 1.5px solid #4D4D4D;
+        width: 300px;
+        height: 50px;
+        background-color: transparent;
+        backdrop-filter: blur(10px);
+
+        &:hover{
+            cursor: pointer;
+        }
+        &:focus{
+            outline: none;
+            border-bottom: 2px solid #DDB57F;
+        }
+    }
+
+    option {
+        color: #4D4D4D;
+        background: transparent;
+    }
+
+
+    /* REPORTES STYLES */
+
+    .modulo-busqueda {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        align-items: center;
+        margin-bottom: 1.5lh;
+    }
+
+    .oculto {
+        display: none;
+    }
+
+    .visible {
+        display: block;
+    }
+
+    h2 { 
+        text-align: center;
+        margin: 1.5rem;
+    }
+
+    .boton-impresion, .facturacion-imprimir {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        & th {
+            background-color: #e3e3e3;
+            color: #282828;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ffffff;
+        }
+        & td {
+            color: #282828;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ffffff;
+        }
+        & tr:last-child td {
+            border-bottom: none;
+        } 
+    }
+</style>

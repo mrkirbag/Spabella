@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>LISTA DE SERVICIOS</h1>  
+        <ol id="lista-servicios"></ol>
+        
+        <div class="container-boton_agregar">
+            <a href="/servicios/agregar-servicios" class="boton-agregar">Agregar Servicio</a>
+        </div>
+    </main>
+
+    <script type="module">
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                
+                const response = await fetch('/api/servicios');
+                const servicios = await response.json();
+    
+                const lista = document.getElementById('lista-servicios');
+                lista.innerHTML = ''; 
+
+                // Si no hay registros, mostrar mensaje de error
+                if (servicios.mensaje) { 
+                    lista.innerHTML = `<p style="color: red; text-align: center;">${servicios.mensaje}</p>`;
+                    return;
+                }
+    
+                // Crear elementos HTML
+                servicios.forEach(servicio => {
+                    const li = document.createElement('li');
+                    li.classList.add('lista-item');
+
+                    li.textContent = `
+                                        ${servicio.nombre.toUpperCase()} | 
+                                        SPA: ${servicio.porcentaje_spabella}% - 
+                                        Empleado: ${servicio.porcentaje_empleado}%
+                                    `;
+
+                    // Crear botón para eliminar servicio
+                    const btnEliminar = document.createElement('button');
+                    btnEliminar.textContent = 'Eliminar';
+
+                    btnEliminar.onclick = async () => {
+                        try {
+                            const deleteResponse = await fetch('/api/servicios/delete', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: servicio.id })
+                            });
+
+                            const result = await deleteResponse.json();
+                            alert(result.message);
+                            window.location.reload();
+                        } catch (error) {
+                            console.error("Error eliminando servicio:", error);
+                        }
+                    };
+
+                    // Agregar botón al elemento y añadir al listado
+                    li.appendChild(btnEliminar);
+                    lista.appendChild(li);
+                });
+    
+            } catch (error) {
+                console.error("Error obteniendo servicios:", error);
+            }
+        });
+
+    </script>
+
+</Layout>
