@@ -1,21 +1,20 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import { createClient } from "@libsql/client";
+
+const db = createClient({   url: import.meta.env.DATABASE_URL,
+                            authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
+                        });
 
 export async function GET() {
     try {
-        const db = await open({
-            filename: './db/spabella.db', 
-            driver: sqlite3.Database
-        });
 
-        const servicios = await db.all("SELECT * FROM servicios");
+        const servicios = await db.execute("SELECT * FROM servicios");
 
         // Si no hay registros, mostrar mensaje de error
-        if (servicios.length === 0) {
+        if (!servicios.rows || servicios.rows.length === 0) {
             return new Response(JSON.stringify({ mensaje: "No hay servicios registrados." }), { status: 200 });
         }
 
-        return new Response(JSON.stringify(servicios), { status: 200 });
+        return new Response(JSON.stringify(servicios.rows), { status: 200 });
 
     } catch (error) {
         console.error("Error obteniendo servicios:", error);
@@ -25,16 +24,15 @@ export async function GET() {
 
 export async function POST({ request }) {
     try {
+
         const { descripcion, porcentajeSpa, porcentajeEmpleado } = await request.json();
 
-        const db = await open({
-            filename: './db/spabella.db',
-            driver: sqlite3.Database
-        });
+        // Validar que los datos no estén vacíos
+        if (!descripcion || !porcentajeSpa || !porcentajeEmpleado) {
+            return new Response(JSON.stringify({ error: "Los campos son obligatorios" }), { status: 400 });
+        }
 
-        await db.run("INSERT INTO servicios (nombre, porcentaje_spabella, porcentaje_empleado) VALUES (?, ?, ?)", [descripcion, porcentajeSpa, porcentajeEmpleado]);
-
-        await db.close();
+        await db.execute("INSERT INTO servicios (nombre, porcentaje_spabella, porcentaje_empleado) VALUES (?, ?, ?)", [descripcion, porcentajeSpa, porcentajeEmpleado]);
 
         return new Response(JSON.stringify({ message: "Servicio agregado exitosamente" }), { status: 200 });
     

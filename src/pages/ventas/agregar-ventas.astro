@@ -35,6 +35,7 @@ import Layout from '../../layouts/Layout.astro';
     <script type="module">
 
         document.addEventListener("DOMContentLoaded", async () => {
+
             const empleadoSelect = document.getElementById("empleado-id");
             const servicioSelect = document.getElementById("servicio-id");
 
@@ -42,8 +43,10 @@ import Layout from '../../layouts/Layout.astro';
                 const response = await fetch("/api/ventas/rellenar-selects");
                 const data = await response.json();
 
+                console.log(data.empleadosEnvios);
+
                 // Rellenar select de empleados
-                data.empleados.forEach(empleado => {
+                data.empleadosEnvios.forEach(empleado => {
                     const option = document.createElement("option");
                     option.value = empleado.id;
                     option.textContent = `${empleado.nombre.toUpperCase()} - ${empleado.cargo.toUpperCase()}`;
@@ -51,7 +54,7 @@ import Layout from '../../layouts/Layout.astro';
                 });
 
                 // Rellenar select de servicios
-                data.servicios.forEach(servicio => {
+                data.serviciosEnvios.forEach(servicio => {
                     const option = document.createElement("option");
                     option.value = servicio.id;
                     option.textContent = `${servicio.nombre.toUpperCase()}`;
