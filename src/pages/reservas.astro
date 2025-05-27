@@ -1,0 +1,82 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+        <main class="container-general">
+        <h1>RESERVAS DE LOS PRÓXIMOS 5 DÍAS</h1>
+        <table id="listaReservas"></table>
+        
+        <div class="container-boton_agregar">
+            <a href="/reservas/agregar-reservas" class="boton-agregar">Agregar Reserva</a>
+        </div>
+
+        <div class="container-boton_agregar">
+            <a href="/clientes/agregar-clientes" class="boton-agregar">REGISTRAR NUEVO CLIENTE</a>
+        </div>
+    </main>
+
+    <script type="module">
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+
+                const response = await fetch('/api/reservas/vista-reservas');
+                const reservas = await response.json();
+    
+                const table = document.getElementById('listaReservas');
+                table.innerHTML = ''; 
+
+                // Si no hay registros, mostrar mensaje de error
+                if (reservas.mensaje) { 
+                    table.innerHTML = `<p style="color: red; text-align: center;">${reservas.mensaje}</p>`;
+                    return;
+                }
+
+
+
+                // Crear elementos HTML
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                        </tr>
+                    `;
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+
+                    // Llenar la tabla con datos
+                    reservas.forEach(reserva => {
+
+                        // Formatear fecha
+                        const fechaObjeto = new Date(reserva.fecha + "T00:00:00");
+                        const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                        const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${reserva.nombre.toUpperCase()}</td>
+                            <td>0${reserva.celular}</td>
+                            <td>${fechaFormateada}</td>
+                            <td>${reserva.descripcion.toUpperCase()}</td>
+                        `;
+
+                        tbody.appendChild(tr);
+
+                    });
+
+                    table.appendChild(tbody);
+
+            } catch (error) {
+                console.error("Error obteniendo reservas:", error);
+            }
+        });
+
+    </script>
+    
+
+</Layout>

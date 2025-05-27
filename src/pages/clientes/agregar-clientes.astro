@@ -1,0 +1,68 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+    
+    <main class="container-general">
+        <h1>AGREGAR NUEVO CLIENTE</h1>
+
+        <form action="/agregar-clientes" id="formulario">
+            <input type="text" name="nombre" id="nombre" placeholder="Nombre y Apellido" />
+            <br />
+            <input type="text" name="numero" id="numero" placeholder="Número de Teléfono" />
+            <br />
+            <button type="submit" style="margin-top: 20px;">Agregar</button>
+        </form>
+    </main>
+
+    <script type="module" >
+
+        const formulario = document.getElementById('formulario');
+
+        formulario.addEventListener('submit', (event) => { 
+            
+            event.preventDefault();
+            
+            const nombre = document.getElementById('nombre').value;
+            const numero = document.getElementById('numero').value;
+
+            // Validar campos
+            if (nombre === '' || numero === '') {
+                alert('Por favor, rellena todos los campos.');
+                formulario.reset();
+                return;
+            }
+
+            if (!/^\d*\.?\d+$/.test(numero)) {
+                alert('El numero de teléfono debe ser un número positivo.');
+                formulario.reset();
+                return;
+            }
+
+            // Enviar datos al servidor
+            const url = "/api/clientes";
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nombre, numero }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Algo está mal con tu FETCH', response.status );
+                } 
+                return response.json();
+            })
+            .then((data) => {
+                console.log(data);
+                formulario.reset();
+                window.location.href = '/reservas';
+            })
+        });
+
+    </script>
+
+
+</Layout>
