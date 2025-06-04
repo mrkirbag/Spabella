@@ -1,6 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-
+import 'dotenv/config';
 import netlify from '@astrojs/netlify';
 
 // https://astro.build/config

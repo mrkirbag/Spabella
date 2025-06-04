@@ -1,0 +1,82 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>AGREGAR SESIÓN</h1>
+        <form id="formulario">
+
+            <input type="date" name="fecha" id="fecha" placeholder="Fecha de la sesión" required>
+            <br />
+
+            <input type="text" name="numero-sesion" id="numero-sesion" placeholder="Número de sesión" required>
+            <br />
+
+            <input type="text" name="abono-pago" id="abono-pago" placeholder="Abono pago" required>
+            <br />
+
+            <button type="submit" style="margin-top: 40px;">Agregar</button>
+        </form>
+
+
+    <script type="module">
+
+        const url = new URL(window.location.href);
+        const idPaquete = url.searchParams.get("paquete");
+
+        // 
+        const formulario = document.getElementById("formulario");
+        formulario.addEventListener("submit", async (event) => {
+
+            event.preventDefault();
+
+            const fecha = document.getElementById("fecha").value;
+            const numeroSesion = Number(document.getElementById("numero-sesion").value);
+            const abonoPago = Number(document.getElementById("abono-pago").value);
+
+            console.log(fecha, numeroSesion, abonoPago);
+
+            // Validar campos
+            if (fecha === '' || numeroSesion === '' || abonoPago === '') {
+                alert('Por favor, rellena todos los campos.');
+                formulario.reset();
+                return;
+            }
+            if (!/^\d*\.?\d+$/.test(abonoPago) || !/^\d*$/.test(numeroSesion)) {
+                alert('El monto y el número de sesiones deben ser números.');
+                formulario.reset();
+                return;
+            }
+
+            // Enviar datos al servidor
+            const url = "/api/paquetesMariana/agregar-sesiones";
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fecha, numeroSesion, abonoPago, idPaquete }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Algo está mal con tu FETCH', response.status );
+                } 
+                return response.json();
+            })
+            .then((data) => {
+                console.log(data);
+                formulario.reset();
+                window.location.href = `/paquetesMariana/detalles?paquete=${idPaquete}`;
+;
+            })
+        });
+
+
+
+    </script>
+
+
+
+</Layout>

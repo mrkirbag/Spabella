@@ -1,0 +1,66 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <form id="formulario" action="/validacion-login" method="POST">
+            <h1>Bienvenida a SpaBella, Mariana!</h1>
+            <input type="text" id="username" name="username" autocomplete="username" style="display: none;" />
+            <input type="password" name="password-user" id="password-user" placeholder="Contraseña" autocomplete="new-password" />
+            <br />
+            <button type="submit" style="margin-top: 40px;">Acceder</button>
+        </form>
+    </main>
+
+    <script type="module">
+
+        const formulario = document.getElementById('formulario');
+        const ACCESS_KEY = "20123358";
+    
+        formulario.addEventListener("submit", async (event) => {
+
+            event.preventDefault();
+            const userKey = document.getElementById("password-user").value;
+
+            // Validar campo
+            if (userKey === '') {
+                alert('Por favor, rellena el campo de contraseña.');
+                formulario.reset();
+                return;
+            }
+
+            // Enviar datos al servidor
+            try {
+                const url = "/api/login-validar";
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userKey }),
+                })
+                .then((response) => {
+                // Si la respuesta es una redirección (status 302), redirigir al usuario
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        return response.json()
+                    }
+                })
+                .then((data) => {
+                    if (data) { // Evitar errores si data es undefined
+                        alert(data.error || "Clave incorrecta. Inténtalo de nuevo.");
+                    }
+                })
+
+            } catch (error) {
+                console.error("Error al validar clave:", error);
+            }
+        });
+
+    </script>
+
+
+</Layout>

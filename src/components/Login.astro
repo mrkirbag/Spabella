@@ -1,0 +1,46 @@
+---
+import LoginSVG from '../assets/login.svg';
+---
+
+<div class="container">
+    <a href="/login">
+        <LoginSVG width={60} height={60} />
+        <span>Iniciar Sesión</span>
+    </a>
+</div>
+
+<style>
+    .container {
+        position: absolute;
+        top: 2rem;
+        right: 5rem;
+        padding: .5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        background: transparent;
+        backdrop-filter: blur(5px);
+        border-radius: 20px;
+    }
+
+            
+    a {
+        text-decoration: none;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        & span{
+            font-size: .7rem;
+            font-weight: 600;
+            color: #4D4D4D;
+        }
+
+        &:hover span{
+            color: #DDB57F;
+            transition: all .25s ease-in-out;
+        }
+    }
+</style>

@@ -6,7 +6,7 @@ export async function GET() {
                                 authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
                             });
 
-    const clientes = await db.execute("SELECT id, nombre, celular FROM clientes");
+    const clientes = await db.execute("SELECT id, nombre, celular FROM clientes ORDER BY nombre ASC");
 
     let clientesEnvios = clientes.rows;
 

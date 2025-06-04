@@ -1,0 +1,205 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>DETALLES DEL PAQUETE</h1>
+
+        <div class="container-detalles">
+            <div class="detalles-cliente" id="detallesCliente"></div>
+            <div class="detalles-paquete" id="detallesPaquete"></div>
+            <div class="regresar">
+                <a href="" class="boton-agregar" id="botonRegresar" style="font-size: medium;">Regresar</a>
+            </div>
+        </div>
+
+        <ol id="listaSesiones"></ol>
+
+        <div  id="mensajeSesiones"></div>
+        <div id="mensajeMonto"></div>
+
+        <div class="container-boton_agregar">
+            <a href="" class="boton-agregar" id="botonAgregarSesion">Agregar Sesión</a>
+        </div>
+
+        <script type="module">  
+
+            // Cargar detalles del paquete
+
+            document.addEventListener("DOMContentLoaded", async () => {
+
+                const botonAgregarSesion = document.getElementById("botonAgregarSesion");
+
+                const url = new URL(window.location.href);
+                const idPaqueteSeleccionado = url.searchParams.get("paquete");  
+
+                botonAgregarSesion.href = `/paquetesMariana/agregar-sesiones?paquete=${idPaqueteSeleccionado}`;
+                const botonRegresar = document.getElementById("botonRegresar");
+                botonRegresar.href = `/paquetesMariana`;   
+                
+                const response = await fetch(`/api/paquetesMariana/detalles-paquetes?id=${idPaqueteSeleccionado}`);
+
+                const detalles = await response.json();
+
+                detalles.forEach(paquete => {
+
+                    // Formatear fecha
+                    const fechaObjeto = new Date(paquete.fecha_compra + "T00:00:00");
+                    const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                    const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+
+                    // Mostrar detalles del cliente
+                    const detallesCliente = document.getElementById("detallesCliente");
+                    const detallesPaqute = document.getElementById("detallesPaquete");
+
+                    detallesCliente.innerHTML = paquete.cliente_nombre.toUpperCase();
+
+                    detallesPaqute.innerHTML = `
+                                                <p><span>Fecha de compra:</span> ${fechaFormateada}</p>
+                                                <p><span>Descripción:</span> ${paquete.descripcion.toUpperCase()}</p>
+                                                <p><span>Número de sesiones:</span> ${paquete.numero_sesiones}</p>
+                                                <p><span>Monto total:</span> ${paquete.monto_total} USD</p>
+                                            `;
+                });
+
+
+            });
+
+            // Cargar sesiones de este paquete
+
+            document.addEventListener("DOMContentLoaded", async () => {
+
+                const url = new URL(window.location.href);
+                const idPaqueteSeleccionado = url.searchParams.get("paquete");  
+                
+                const response = await fetch(`/api/paquetesMariana/sesiones-paquetes?id=${idPaqueteSeleccionado}`);
+                
+                const sesiones = await response.json();
+
+                const listaSesiones = document.getElementById("listaSesiones");
+                listaSesiones.innerHTML = ""; // Limpiar antes de agregar nuevas sesiones
+
+                // Si no hay registros, mostrar mensaje de error
+                if (sesiones.mensaje) { 
+                    listaSesiones.innerHTML = `<p style="color: red; text-align: center;">${sesiones.mensaje}</p>`;
+                    return;
+                }
+
+                const tabla = document.createElement("table");
+                tabla.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Número de sesión</th>
+                            <th>Fecha de la sesión</th>
+                            <th>Abono pago</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                `;
+
+                const tbody = tabla.querySelector("tbody");
+                listaSesiones.appendChild(tabla);
+
+                // Llenar la tabla con datos
+                sesiones.forEach(sesion => {
+
+                    // Formatear fecha
+                    const fechaObjeto = new Date(sesion.fecha + "T00:00:00");
+                    const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                    const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                                    <td>${sesion.numero_sesion}</td>
+                                    <td>${fechaFormateada}</td>
+                                    <td>${sesion.abono_pago} USD</td>
+                                `;
+
+                    tbody.appendChild(tr);
+
+                });
+
+                listaSesiones.appendChild(tabla);
+
+                // Validar que no se agreguen mas sesiones de las totales y el monto restante
+
+                const validacionResponse = await fetch(`/api/paquetesMariana/validar-sesiones?id=${idPaqueteSeleccionado}`);
+                
+                const validacionData = await validacionResponse.json();
+
+                const dataValidacion = validacionData.validacionTotal;
+
+                console.log(dataValidacion);
+
+                const mensajeSesiones = document.getElementById("mensajeSesiones");
+                const mensajeMonto = document.getElementById("mensajeMonto");
+
+                
+                if(dataValidacion.monto > 0){
+
+                    mensajeMonto.textContent = `Saldo pendiente: ${dataValidacion.monto} USD.`;
+                    mensajeMonto.style.color = "red";
+                    mensajeMonto.classList.add("mensaje");
+
+                } else if(dataValidacion.monto === 0){
+
+                    mensajeMonto.textContent = `Saldo total: ${dataValidacion.monto} USD, paquete cancelado en su totalidad.`;
+                    mensajeMonto.classList.add("mensaje");
+                }
+
+                if(dataValidacion.sesiones > 0){
+
+                    mensajeSesiones.textContent = `Restan ${dataValidacion.sesiones} sesiones.`;
+                    mensajeSesiones.classList.add("mensaje");
+
+                } else if(dataValidacion.sesiones === 0){
+
+                    const botonAgregarSesion = document.getElementById("botonAgregarSesion");
+                    botonAgregarSesion.style.visibility = "hidden";
+
+                    mensajeSesiones.textContent = `No se pueden agregar más sesiones`;
+                    mensajeSesiones.style.color = "red";
+                    mensajeSesiones.classList.add("mensaje");
+                }
+
+            });
+
+
+
+    
+    
+        </script>
+
+        <style>
+
+            .container-detalles{
+                padding: 1.5rem;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                text-align: justify;
+                gap: .5rem;
+
+                & .detalles-cliente{
+                    font-size: 1.25rem;
+                    font-style: italic;
+                }
+
+                span {
+                    font-weight: bold;
+                    font-size: .85rem;
+                }
+            }
+
+            .mensaje {
+                text-align: center;
+                margin-top: 1rem;
+            }
+
+
+
+
+        </style>
+</Layout>

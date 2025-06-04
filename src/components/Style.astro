@@ -28,7 +28,7 @@
         justify-content: center;
     }
 
-    input[type="text"]{
+    input[type="text"], input[type="password"]{
         border: none;
         border-bottom: 1.5px solid #4D4D4D;
         width: 300px;
@@ -73,6 +73,16 @@
         display: flex;
         justify-content: center;
         align-items: center;
+    }
+
+    .boton-detalle {
+        color: #4D4D4D;
+        position: relative;
+        transition: all .25s ease-in-out;
+
+        &:hover {
+            color: #DDB57F;
+        }
     }
 
     .boton-agregar {

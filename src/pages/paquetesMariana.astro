@@ -1,0 +1,136 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+    <main class="container-general">
+        <h1>Bienvenida Mariana!</h1>
+        <div class="box-texto">
+            <p> 
+                Aquí podrás ver el historial de los paquetes de tus clientes. <br>
+                1. Selecciona un cliente para ver sus paquetes. <br>
+                2. Selecciona un paquete de dicho cliente para ver sus detalles. <br>
+                3. Puedes agregar sesiones para ese paquete. <br>
+                4. Y, por último, puedes agregar un nuevo paquete para cualquier cliente.
+            </p>
+        </div>
+
+        <div class="box-buscador">
+            <select name="cliente" id="cliente">
+                <option value="">Selecciona un cliente</option>
+            </select>
+        </div>
+
+        <ol id="listaPaquetes"></ol>
+
+        <div class="container-boton_agregar">
+            <a href="/paquetesMariana/agregar-paquetes" class="boton-agregar">Agregar Paquete</a>
+        </div>
+    </main>
+
+    <script type="module">
+
+        // Rellenar select de clientes
+        const clienteSelect = document.getElementById("cliente");
+        const response = await fetch("/api/clientes/rellenar-selects-reservas");
+        const data = await response.json();
+
+        data.clientesEnvios.forEach(cliente => {
+            const option = document.createElement("option");
+            option.value = cliente.id;
+            option.textContent = `${cliente.nombre.toUpperCase()}`;
+            clienteSelect.appendChild(option);
+        });
+
+        // Mostrar paquetes del cliente seleccionado
+        clienteSelect.addEventListener("change", async () => {
+
+            const getCliente = clienteSelect.value;
+
+            const response = await fetch(`/api/paquetesMariana/vista-paquetes?cliente=${getCliente}`);
+            const paquetes = await response.json();
+            
+            const listaPaquetes = document.getElementById("listaPaquetes");
+            listaPaquetes.innerHTML = ""; // Limpiar lista anterior
+
+            // Si no hay registros, mostrar mensaje de error
+            if (paquetes.mensaje) {
+                listaPaquetes.innerHTML = `<p style="color: red; text-align: center;">${paquetes.mensaje}</p>`;
+                return;
+            }
+
+            const tabla = document.createElement("table");
+            tabla.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Número de sesiones</th>
+                        <th>Monto Total</th>
+                        <th>DETALLES</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+
+            const tbody = tabla.querySelector("tbody");
+
+            listaPaquetes.appendChild(tabla);
+            
+            paquetes.forEach(paquete => {
+
+                // Formatear fecha
+                const fechaObjeto = new Date(paquete.fecha_compra + "T00:00:00");
+                const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+
+                // Crear opciones para el detalle
+                const accederDetalle = document.createElement('a');
+                accederDetalle.textContent = 'Ver detalle';
+                accederDetalle.classList.add('boton-detalle');
+                accederDetalle.href = `/paquetesMariana/detalles?paquete=${paquete.id}`; // Redirige a la nueva vista
+
+                // Crear elementos HTML
+                const item = document.createElement("tr");
+                item.innerHTML = `
+                                    <td>${fechaFormateada}</td>
+                                    <td>${paquete.descripcion}</td>
+                                    <td>${paquete.numero_sesiones} SES.</td>
+                                    <td>${paquete.monto_total} USD</td>
+                                    <td>${accederDetalle.outerHTML}</td>
+                                `;
+
+                tbody.appendChild(item);
+            });
+
+            listaPaquetes.appendChild(tabla);
+
+        });
+
+    </script>
+
+    <style>
+
+        .box-texto{
+            padding: .5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            & p{
+                text-align: justify;
+                line-height: 1.5;
+                margin-bottom: 1.5rem;
+                font-size: .85rem;
+            }
+        }
+
+        .box-buscador{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+    </style>
+</Layout>

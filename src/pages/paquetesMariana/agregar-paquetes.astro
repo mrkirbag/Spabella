@@ -1,0 +1,115 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout>
+
+    <main class="container-general">
+        <h1>AGREGAR PAQUETE</h1>
+
+        <form action="/agregar-paquetes" id="formulario">
+            <select name="cliente" id="cliente">
+                <option value="">Selecciona un Cliente</option>
+            </select>
+            <br />
+
+            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Paquete" />
+            <br />
+
+            <input type="text" name="nro-sesiones" id="nro-sesiones" placeholder="Número de sesiones" />
+            <br />
+
+            <input type="text" name="monto" id="monto" placeholder="Monto en dólares" />
+            <br />
+
+            <input type="date" name="fecha" id="fecha" placeholder="Fecha de la compra" />
+            <br />
+
+            <button type="submit" style="margin-top: 40px;">Agregar</button>
+        </form>
+    </main>
+
+    <style>
+
+        input[type="date"]{
+            width: 300px;
+            height: 50px;
+        }
+
+    </style>
+
+    <script type="module">
+
+        // Rellenar select de clientes
+
+        const clienteSelect = document.getElementById("cliente");
+
+        try {
+            const response = await fetch("/api/clientes/rellenar-selects-reservas");
+            const data = await response.json();
+
+            data.clientesEnvios.forEach(cliente => {
+                const option = document.createElement("option");
+                option.value = cliente.id;
+                option.textContent = `${cliente.nombre.toUpperCase()}`;
+                clienteSelect.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error("Error al cargar clientes:", error);
+        }
+
+        const formulario = document.getElementById('formulario');
+
+        formulario.addEventListener('submit', (event) => {
+
+            event.preventDefault();
+
+            const descripcion = document.getElementById("descripcion").value
+            const nroSesiones = document.getElementById("nro-sesiones").value;
+            const monto = document.getElementById("monto").value;
+            const fecha = document.getElementById("fecha").value;
+            const clienteId = document.getElementById("cliente").value;
+
+            const montoTotal = Number(monto);
+            const nroSesionesTotal = Number(nroSesiones);
+
+            // Validar campos
+            if (descripcion === '' || montoTotal === '' || fecha === '' || clienteId === '' || nroSesionesTotal === '') {
+                alert('Por favor, rellena todos los campos.');
+                formulario.reset();
+                return;
+            }
+            if (!/^\d*\.?\d+$/.test(montoTotal) || !/^\d*$/.test(nroSesionesTotal)) {
+                alert('El monto y el número de sesiones deben ser números.');
+                formulario.reset();
+                return;
+            }
+
+            console.log(montoTotal, nroSesionesTotal, descripcion, fecha, clienteId);
+
+            // Enviar datos al servidor
+            const url = "/api/paquetesMariana";
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ descripcion, nroSesionesTotal, montoTotal, fecha, clienteId }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Algo está mal con tu FETCH', response.status );
+                } 
+                return response.json();
+            })
+            .then((data) => {
+                console.log(data);
+                formulario.reset();
+                window.location.href = '/paquetesMariana';
+            })  
+        });
+
+    </script>
+
+    </Layout>
