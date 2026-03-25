@@ -1,13 +1,15 @@
 CREATE TABLE IF NOT EXISTS empleados (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
-    cargo TEXT NOT NULL
+    cargo TEXT NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'activo'
 );
 CREATE TABLE IF NOT EXISTS servicios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     porcentaje_spabella INTEGER NOT NULL,
-    porcentaje_empleado INTEGER NOT NULL
+    porcentaje_empleado INTEGER NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'activo'
 );
 CREATE TABLE IF NOT EXISTS ventas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

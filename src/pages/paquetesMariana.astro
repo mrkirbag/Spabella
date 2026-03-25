@@ -8,7 +8,7 @@ import Layout from '../layouts/Layout.astro';
         <div class="box-texto">
             <p> 
                 Aquí podrás ver el historial de los paquetes de tus clientes. <br>
-                1. Selecciona un cliente para ver sus paquetes. <br>
+                1. Selecciona un paciente para ver sus paquetes. <br>
                 2. Selecciona un paquete de dicho cliente para ver sus detalles. <br>
                 3. Puedes agregar sesiones para ese paquete. <br>
                 4. Y, por último, puedes agregar un nuevo paquete para cualquier cliente.
@@ -16,8 +16,10 @@ import Layout from '../layouts/Layout.astro';
         </div>
 
         <div class="box-buscador">
+            <input type="text" id="buscar-cliente" placeholder="Buscar paciente" autocomplete="off" />
+            <br>
             <select name="cliente" id="cliente">
-                <option value="">Selecciona un cliente</option>
+                <option value="">Paciente</option>
             </select>
         </div>
 
@@ -30,16 +32,44 @@ import Layout from '../layouts/Layout.astro';
 
     <script type="module">
 
-        // Rellenar select de clientes
+        const buscarClienteInput = document.getElementById("buscar-cliente");
         const clienteSelect = document.getElementById("cliente");
+        let clientesCache = [];
+
+        const renderClientes = (filtro = '') => {
+            const termino = filtro.trim().toLowerCase();
+            const clientesFiltrados = termino
+                ? clientesCache.filter((cliente) => {
+                    const textoBusqueda = `${cliente.nombre} ${cliente.celular}`.toLowerCase();
+                    return textoBusqueda.includes(termino);
+                })
+                : clientesCache;
+
+            clienteSelect.innerHTML = '';
+
+            const optionDefault = document.createElement("option");
+            optionDefault.value = "";
+            optionDefault.textContent = clientesFiltrados.length
+                ? 'Paciente'
+                : 'Sin resultados';
+            clienteSelect.appendChild(optionDefault);
+
+            clientesFiltrados.forEach(cliente => {
+                const option = document.createElement("option");
+                option.value = cliente.id;
+                option.textContent = `${cliente.nombre.toUpperCase()}`;
+                clienteSelect.appendChild(option);
+            });
+        };
+
         const response = await fetch("/api/clientes/rellenar-selects-reservas");
         const data = await response.json();
 
-        data.clientesEnvios.forEach(cliente => {
-            const option = document.createElement("option");
-            option.value = cliente.id;
-            option.textContent = `${cliente.nombre.toUpperCase()}`;
-            clienteSelect.appendChild(option);
+        clientesCache = data.clientesEnvios || [];
+        renderClientes();
+
+        buscarClienteInput.addEventListener('input', () => {
+            renderClientes(buscarClienteInput.value);
         });
 
         // Mostrar paquetes del cliente seleccionado
@@ -127,9 +157,15 @@ import Layout from '../layouts/Layout.astro';
 
         .box-buscador{
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             margin-bottom: 1.5rem;
+        }
+
+        #buscar-cliente {
+            width: 300px;
+            margin-bottom: 0.75rem;
         }
 
     </style>

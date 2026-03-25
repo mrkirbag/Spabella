@@ -6,7 +6,7 @@ const db = createClient({   url: import.meta.env.DATABASE_URL,
 
 export async function GET() {
     try {
-        const empleados = await db.execute("SELECT * FROM empleados");
+        const empleados = await db.execute("SELECT * FROM empleados WHERE estado = 'activo'");
 
         console.log("Resultado de la consulta:", empleados); // Debug
         console.log("Empleados obtenidos:", empleados.rows); // Ver datos reales
@@ -34,7 +34,7 @@ export async function POST({ request }) {
             return new Response(JSON.stringify({ error: "Nombre y cargo son obligatorios" }), { status: 400 });
         }
 
-        await db.execute("INSERT INTO empleados (nombre, cargo) VALUES (?, ?)", [nombre, cargo]);
+        await db.execute("INSERT INTO empleados (nombre, cargo, estado) VALUES (?, ?, 'activo')", [nombre, cargo]);
 
         return new Response(JSON.stringify({ message: "Empleado agregado exitosamente" }), { status: 201 });
 

@@ -6,8 +6,8 @@ export async function GET() {
                                 authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
                             });
 
-    const empleados = await db.execute("SELECT id, nombre, cargo FROM empleados");
-    const servicios = await db.execute("SELECT id, nombre, porcentaje_spabella, porcentaje_empleado FROM servicios");
+    const empleados = await db.execute("SELECT id, nombre, cargo FROM empleados WHERE estado = 'activo'");
+    const servicios = await db.execute("SELECT id, nombre, porcentaje_spabella, porcentaje_empleado FROM servicios WHERE estado = 'activo'");
 
     let empleadosEnvios = empleados.rows;
     let serviciosEnvios = servicios.rows;

@@ -9,9 +9,9 @@ export async function DELETE({ request }) {
                                     authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
                                 });
 
-        await db.execute("DELETE FROM servicios WHERE id = ?", [id]);
+        await db.execute("UPDATE servicios SET estado = 'inactivo' WHERE id = ?", [id]);
 
-        return new Response(JSON.stringify({message: "Servicio eliminado correctamente" }), { status: 200 });
+        return new Response(JSON.stringify({message: "Servicio inactivado correctamente" }), { status: 200 });
 
     } catch (error) {
         console.error("Error eliminando servicio:", error);

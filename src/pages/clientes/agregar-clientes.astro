@@ -49,17 +49,23 @@ import Layout from '../../layouts/Layout.astro';
                 },
                 body: JSON.stringify({ nombre, numero }),
             })
-            .then((response) => {
+            .then(async (response) => {
+                const data = await response.json();
+
                 if (!response.ok) {
-                    throw new Error('Algo está mal con tu FETCH', response.status );
-                } 
-                return response.json();
+                    throw new Error(data.error || 'No se pudo agregar el cliente.');
+                }
+
+                return data;
             })
             .then((data) => {
                 console.log(data);
                 formulario.reset();
                 window.location.href = '/reservas';
             })
+            .catch((error) => {
+                alert(error.message || 'Ocurrió un error al agregar el cliente.');
+            });
         });
 
     </script>

@@ -7,7 +7,7 @@ const db = createClient({   url: import.meta.env.DATABASE_URL,
 export async function GET() {
     try {
 
-        const servicios = await db.execute("SELECT * FROM servicios");
+        const servicios = await db.execute("SELECT * FROM servicios WHERE estado = 'activo'");
 
         // Si no hay registros, mostrar mensaje de error
         if (!servicios.rows || servicios.rows.length === 0) {
@@ -32,7 +32,7 @@ export async function POST({ request }) {
             return new Response(JSON.stringify({ error: "Los campos son obligatorios" }), { status: 400 });
         }
 
-        await db.execute("INSERT INTO servicios (nombre, porcentaje_spabella, porcentaje_empleado) VALUES (?, ?, ?)", [descripcion, porcentajeSpa, porcentajeEmpleado]);
+        await db.execute("INSERT INTO servicios (nombre, porcentaje_spabella, porcentaje_empleado, estado) VALUES (?, ?, ?, 'activo')", [descripcion, porcentajeSpa, porcentajeEmpleado]);
 
         return new Response(JSON.stringify({ message: "Servicio agregado exitosamente" }), { status: 200 });
     

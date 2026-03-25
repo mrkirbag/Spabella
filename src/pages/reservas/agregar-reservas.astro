@@ -5,43 +5,117 @@ import Layout from '../../layouts/Layout.astro';
 <Layout>
     
     <main class="container-general">
-        <h1>AGREGAR RESERVA</h1>
+        <h1 id="titulo-formulario">AGREGAR RESERVA</h1>
 
-        <form action="/agregar-ventas" id="formulario">
+        <form action="/agregar-reservas" id="formulario">
             <input type="date" name="fecha" id="fecha"/>
             <br />
             <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
             <br />
+            <div id="contenedor-buscar-cliente">
+                <input type="text" id="buscar-cliente" placeholder="Buscar paciente" autocomplete="off" />
+                <br />
+            </div>
             <select name="cliente-id" id="cliente-id">
-                <option value="">Selecciona un Cliente</option>
+                <option value="">Paciente</option>
             </select>
             <br />
-            <button type="submit" style="margin-top: 40px;">Agregar</button>
+            <button type="submit" id="boton-submit" style="margin-top: 40px;">Agregar</button>
         </form>
 
     <script type="module">
 
-        document.addEventListener("DOMContentLoaded", async () => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const reservaId = queryParams.get('id');
 
-            const clienteSelect = document.getElementById("cliente-id");
+        const tituloFormulario = document.getElementById('titulo-formulario');
+        const botonSubmit = document.getElementById('boton-submit');
+        const fechaInput = document.getElementById('fecha');
+        const descripcionInput = document.getElementById('descripcion');
+        const contenedorBuscarCliente = document.getElementById('contenedor-buscar-cliente');
+        const buscarClienteInput = document.getElementById('buscar-cliente');
+        const clienteSelect = document.getElementById('cliente-id');
+        let clientesCache = [];
+        let clienteSeleccionadoId = '';
+        let reservaOriginal = null;
+
+        const renderClientes = (filtro = '') => {
+            const termino = filtro.trim().toLowerCase();
+            const clientesFiltrados = termino
+                ? clientesCache.filter((cliente) => {
+                    const textoBusqueda = `${cliente.nombre} ${cliente.celular}`.toLowerCase();
+                    return textoBusqueda.includes(termino);
+                })
+                : clientesCache;
+
+            clienteSelect.innerHTML = '';
+
+            const optionDefault = document.createElement('option');
+            optionDefault.value = '';
+            optionDefault.textContent = clientesFiltrados.length
+                ? 'Paciente'
+                : 'Sin resultados';
+            clienteSelect.appendChild(optionDefault);
+
+            clientesFiltrados.forEach((cliente) => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                option.textContent = `${cliente.nombre.toUpperCase()} - 0${cliente.celular}`;
+                clienteSelect.appendChild(option);
+            });
+
+            if (clienteSeleccionadoId) {
+                clienteSelect.value = String(clienteSeleccionadoId);
+            }
+        };
+
+        if (reservaId) {
+            tituloFormulario.textContent = 'REPROGRAMAR RESERVA';
+            botonSubmit.textContent = 'Actualizar';
+            contenedorBuscarCliente.style.display = 'none';
+            descripcionInput.readOnly = true;
+            clienteSelect.disabled = true;
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
 
             try {
                 const response = await fetch("/api/clientes/rellenar-selects-reservas");
                 const data = await response.json();
 
-                console.log(data.clientesEnvios);
+                clientesCache = data.clientesEnvios || [];
+                renderClientes();
 
-                // Rellenar select de clientes
-                data.clientesEnvios.forEach(cliente => {
-                    const option = document.createElement("option");
-                    option.value = cliente.id;
-                    option.textContent = `${cliente.nombre.toUpperCase()} - 0${cliente.celular}`;
-                    clienteSelect.appendChild(option);
-                });
+                if (reservaId) {
+                    const reservaResponse = await fetch(`/api/reservas?id=${reservaId}`);
+                    const reserva = await reservaResponse.json();
+
+                    if (!reservaResponse.ok) {
+                        alert(reserva.error || 'No se pudo obtener la reserva.');
+                        window.location.href = '/reservas';
+                        return;
+                    }
+
+                    fechaInput.value = reserva.fecha;
+                    descripcionInput.value = reserva.descripcion;
+                    reservaOriginal = reserva;
+                    clienteSeleccionadoId = String(reserva.id_cliente);
+                    renderClientes();
+                }
 
             } catch (error) {
                 console.error("Error al cargar clientes:", error);
             }
+        });
+
+        if (!reservaId) {
+            buscarClienteInput.addEventListener('input', () => {
+                renderClientes(buscarClienteInput.value);
+            });
+        }
+
+        clienteSelect.addEventListener('change', () => {
+            clienteSeleccionadoId = clienteSelect.value;
         });
 
         const formulario = document.getElementById('formulario');
@@ -51,8 +125,8 @@ import Layout from '../../layouts/Layout.astro';
             event.preventDefault();
 
             const fecha = document.getElementById('fecha').value;
-            const descripcion = document.getElementById('descripcion').value;
-            const clienteId = document.getElementById('cliente-id').value;
+            const descripcion = reservaId ? reservaOriginal?.descripcion : document.getElementById('descripcion').value;
+            const clienteId = reservaId ? reservaOriginal?.id_cliente : document.getElementById('cliente-id').value;
 
 
             // Validar campos
@@ -65,11 +139,11 @@ import Layout from '../../layouts/Layout.astro';
             // Enviar datos al servidor
             const url = "/api/reservas";
             fetch(url, {
-                method: 'POST',
+                method: reservaId ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ fecha, descripcion, clienteId }),
+                body: JSON.stringify({ id: reservaId, fecha, descripcion, clienteId }),
             })
             .then((response) => {
                 if (!response.ok) {

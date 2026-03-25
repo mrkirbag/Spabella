@@ -4,6 +4,7 @@ import ServiciosSVG from '../assets/servicios.svg';
 import VentasSVG from '../assets/ventas.svg';
 import ReportesSVG from '../assets/reportes.svg';
 import RecordatoriosSVG from '../assets/recordatorios.svg';
+import LoginSVG from '../assets/login.svg';
 ---
 
 <nav>
@@ -39,6 +40,12 @@ import RecordatoriosSVG from '../assets/recordatorios.svg';
             <a href="/reservas">
                 <RecordatoriosSVG width={60} height={60} />
                 <span>Calendario</span>
+            </a>
+        </li>
+        <li class="menu-paquetes">
+            <a href="/paquetesMariana">
+                <LoginSVG width={44} height={44} />
+                <span>Paquetes Mariana</span>
             </a>
         </li>
     </ul>
@@ -78,6 +85,10 @@ import RecordatoriosSVG from '../assets/recordatorios.svg';
     li{
         margin-right: 1rem;
 
+    }
+
+    .menu-paquetes a {
+        padding-top: 6px;
     }
 
     a{

@@ -1,12 +1,16 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Login from '../components/Login.astro';
 ---
 
 <Layout>
-    	<Login></Login>
         <main class="container-general">
-        <h1>RESERVAS DE LOS PRÓXIMOS 5 DÍAS</h1>
+        <h1>AGENDA DE LOS PRÓXIMOS 5 DÍAS</h1>
+
+        <div class="modulo-busqueda">
+            <input type="date" id="fechaSeleccionada" />
+            <button type="button" id="verProximos">Ver próximos 5 días</button>
+        </div>
+
         <table id="listaReservas"></table>
         
         <div class="container-boton_agregar">
@@ -14,30 +18,26 @@ import Login from '../components/Login.astro';
         </div>
 
         <div class="container-boton_agregar">
-            <a href="/clientes/agregar-clientes" class="boton-agregar">REGISTRAR NUEVO CLIENTE</a>
+            <a href="/clientes/agregar-clientes" class="boton-agregar">Registrar Nuevo Paciente</a>
         </div>
     </main>
 
     <script type="module">
 
         document.addEventListener('DOMContentLoaded', async () => {
-            try {
+            const table = document.getElementById('listaReservas');
+            const fechaSeleccionadaInput = document.getElementById('fechaSeleccionada');
+            const verProximosBtn = document.getElementById('verProximos');
 
-                const response = await fetch('/api/reservas/vista-reservas');
-                const reservas = await response.json();
-    
-                const table = document.getElementById('listaReservas');
-                table.innerHTML = ''; 
+            const renderReservas = (reservas) => {
+                table.innerHTML = '';
 
                 // Si no hay registros, mostrar mensaje de error
-                if (reservas.mensaje) { 
+                if (reservas.mensaje) {
                     table.innerHTML = `<p style="color: red; text-align: center;">${reservas.mensaje}</p>`;
                     return;
                 }
 
-
-
-                // Crear elementos HTML
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                         <tr>
@@ -45,40 +45,167 @@ import Login from '../components/Login.astro';
                             <th>Teléfono</th>
                             <th>Fecha</th>
                             <th>Descripción</th>
+                            <th>Acciones</th>
                         </tr>
                     `;
-                    table.appendChild(thead);
+                table.appendChild(thead);
 
-                    const tbody = document.createElement('tbody');
+                const tbody = document.createElement('tbody');
 
-                    // Llenar la tabla con datos
-                    reservas.forEach(reserva => {
+                reservas.forEach(reserva => {
 
-                        // Formatear fecha
-                        const fechaObjeto = new Date(reserva.fecha + "T00:00:00");
-                        const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
-                        const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+                    // Formatear fecha
+                    const fechaObjeto = new Date(reserva.fecha + "T00:00:00");
+                    const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
+                    const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+                    const celularLimpio = String(reserva.celular || '').replace(/\D/g, '');
+                    let numeroWhatsapp = celularLimpio;
 
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${reserva.nombre.toUpperCase()}</td>
-                            <td>0${reserva.celular}</td>
-                            <td>${fechaFormateada}</td>
-                            <td>${reserva.descripcion.toUpperCase()}</td>
-                        `;
+                    if (numeroWhatsapp.startsWith('0')) {
+                        numeroWhatsapp = numeroWhatsapp.slice(1);
+                    }
 
-                        tbody.appendChild(tr);
+                    if (numeroWhatsapp.length === 9) {
+                        numeroWhatsapp = `58${numeroWhatsapp}`;
+                    }
 
+                    const mensajeWhatsapp = encodeURIComponent(
+                        `Hola ${reserva.nombre.toUpperCase()}, te recordamos que tienes una cita para el día ${fechaFormateada} de ${reserva.descripcion.toUpperCase()} en Spabella Stetic. ¡Te esperamos!`
+                    );
+                    const linkWhatsapp = numeroWhatsapp
+                        ? `https://wa.me/${numeroWhatsapp}?text=${mensajeWhatsapp}`
+                        : '#';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${reserva.nombre.toUpperCase()}</td>
+                        <td>
+                            <a href="${linkWhatsapp}" target="_blank" rel="noopener noreferrer" class="link-whatsapp">
+                                <span class="link-whatsapp__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M4 5.5C4 4.67157 4.67157 4 5.5 4H18.5C19.3284 4 20 4.67157 20 5.5V14.5C20 15.3284 19.3284 16 18.5 16H9.5L5.2 19.3C4.53956 19.8063 3.6 19.3353 3.6 18.5V16.5C3.6 16.2239 3.82386 16 4.1 16H5.5C4.67157 16 4 15.3284 4 14.5V5.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                                        <path d="M8 8.5H16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                        <path d="M8 11.5H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                    </svg>
+                                </span>
+                                <span>0${reserva.celular}</span>
+                            </a>
+                        </td>
+                        <td>${fechaFormateada}</td>
+                        <td>${reserva.descripcion.toUpperCase()}</td>
+                        <td>
+                            <div class="acciones-reserva">
+                                <button type="button" class="boton-reprogramar">Reprogramar</button>
+                                <button type="button" class="boton-eliminar">Eliminar</button>
+                            </div>
+                        </td>
+                    `;
+
+                    const btnReprogramar = tr.querySelector('.boton-reprogramar');
+                    const btnEliminar = tr.querySelector('.boton-eliminar');
+
+                    btnReprogramar.addEventListener('click', () => {
+                        window.location.href = `/reservas/agregar-reservas?id=${reserva.id}`;
                     });
 
-                    table.appendChild(tbody);
+                    btnEliminar.addEventListener('click', async () => {
+                        const confirmar = window.confirm('¿Seguro que deseas eliminar esta reserva?');
+                        if (!confirmar) return;
 
-            } catch (error) {
-                console.error("Error obteniendo reservas:", error);
-            }
+                        try {
+                            const deleteResponse = await fetch('/api/reservas/delete', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: reserva.id })
+                            });
+
+                            const result = await deleteResponse.json();
+
+                            if (!deleteResponse.ok) {
+                                alert(result.error || 'No se pudo eliminar la reserva.');
+                                return;
+                            }
+
+                            alert(result.message);
+                            tr.remove();
+                        } catch (error) {
+                            console.error("Error eliminando reserva:", error);
+                        }
+                    });
+
+                    tbody.appendChild(tr);
+
+                });
+
+                table.appendChild(tbody);
+            };
+
+            const cargarReservas = async (fecha = '') => {
+                try {
+                    const query = fecha ? `?fecha=${encodeURIComponent(fecha)}` : '';
+                    const response = await fetch(`/api/reservas/vista-reservas${query}`);
+                    const reservas = await response.json();
+                    renderReservas(reservas);
+                } catch (error) {
+                    console.error("Error obteniendo reservas:", error);
+                }
+            };
+
+            fechaSeleccionadaInput.addEventListener('change', () => {
+                if (!fechaSeleccionadaInput.value) return;
+                cargarReservas(fechaSeleccionadaInput.value);
+            });
+
+            verProximosBtn.addEventListener('click', () => {
+                fechaSeleccionadaInput.value = '';
+                cargarReservas();
+            });
+
+            await cargarReservas();
         });
 
     </script>
+
+    <style is:global>
+        .link-whatsapp {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #4D4D4D;
+            font-weight: 700;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .link-whatsapp__icon {
+            display: inline-flex;
+            color: #DDB57F;
+        }
+
+        .link-whatsapp:hover {
+            color: #DDB57F;
+            border-color: #DDB57F;
+        }
+
+        .link-whatsapp:hover .link-whatsapp__icon {
+            color: #4D4D4D;
+        }
+
+        .acciones-reserva {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .acciones-reserva button {
+            margin: 0;
+        }
+    </style>
     
 
 </Layout>

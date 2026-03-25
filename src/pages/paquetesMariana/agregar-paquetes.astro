@@ -8,8 +8,10 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR PAQUETE</h1>
 
         <form action="/agregar-paquetes" id="formulario">
+            <input type="text" id="buscar-cliente" placeholder="Buscar paciente" autocomplete="off" />
+            <br />
             <select name="cliente" id="cliente">
-                <option value="">Selecciona un Cliente</option>
+                <option value="">Paciente</option>
             </select>
             <br />
 
@@ -36,28 +38,70 @@ import Layout from '../../layouts/Layout.astro';
             height: 50px;
         }
 
+        #buscar-cliente {
+            width: 300px;
+            height: 50px;
+            border: none;
+            border-bottom: 1.5px solid #4D4D4D;
+            background-color: transparent;
+            backdrop-filter: blur(10px);
+        }
+
+        #buscar-cliente:focus {
+            outline: none;
+            border-bottom: 2px solid #DDB57F;
+        }
+
     </style>
 
     <script type="module">
 
         // Rellenar select de clientes
 
+        const buscarClienteInput = document.getElementById("buscar-cliente");
         const clienteSelect = document.getElementById("cliente");
+        let clientesCache = [];
 
-        try {
-            const response = await fetch("/api/clientes/rellenar-selects-reservas");
-            const data = await response.json();
+        const renderClientes = (filtro = '') => {
+            const termino = filtro.trim().toLowerCase();
+            const clientesFiltrados = termino
+                ? clientesCache.filter((cliente) => {
+                    const textoBusqueda = `${cliente.nombre} ${cliente.celular}`.toLowerCase();
+                    return textoBusqueda.includes(termino);
+                })
+                : clientesCache;
 
-            data.clientesEnvios.forEach(cliente => {
+            clienteSelect.innerHTML = '';
+
+            const optionDefault = document.createElement("option");
+            optionDefault.value = "";
+            optionDefault.textContent = clientesFiltrados.length
+                ? 'Paciente'
+                : 'Sin resultados';
+            clienteSelect.appendChild(optionDefault);
+
+            clientesFiltrados.forEach(cliente => {
                 const option = document.createElement("option");
                 option.value = cliente.id;
                 option.textContent = `${cliente.nombre.toUpperCase()}`;
                 clienteSelect.appendChild(option);
             });
+        };
+
+        try {
+            const response = await fetch("/api/clientes/rellenar-selects-reservas");
+            const data = await response.json();
+
+            clientesCache = data.clientesEnvios || [];
+            renderClientes();
 
         } catch (error) {
             console.error("Error al cargar clientes:", error);
         }
+
+        buscarClienteInput.addEventListener('input', () => {
+            renderClientes(buscarClienteInput.value);
+        });
 
         const formulario = document.getElementById('formulario');
 

@@ -28,13 +28,24 @@ export async function POST({ request }) {
     try {
         const body = await request.json();
         const { nombre, numero } = body;
+        const nombreNormalizado = String(nombre || "").trim().toLowerCase();
+        const numeroNormalizado = String(numero || "").replace(/\D/g, "");
 
         // Validar que los datos no estén vacíos
-        if (!nombre || !numero) {
+        if (!nombreNormalizado || !numeroNormalizado) {
             return new Response(JSON.stringify({ error: "Nombre y Numero de Teléfono son obligatorios" }), { status: 400 });
         }
 
-        await db.execute("INSERT INTO clientes (nombre, celular) VALUES (?, ?)", [nombre, numero]);
+        const duplicado = await db.execute(
+            "SELECT id FROM clientes WHERE LOWER(TRIM(nombre)) = ? AND CAST(celular AS TEXT) = ? LIMIT 1",
+            [nombreNormalizado, numeroNormalizado]
+        );
+
+        if (duplicado.rows && duplicado.rows.length > 0) {
+            return new Response(JSON.stringify({ error: "Este cliente ya existe con el mismo nombre y celular" }), { status: 409 });
+        }
+
+        await db.execute("INSERT INTO clientes (nombre, celular) VALUES (?, ?)", [String(nombre).trim(), numeroNormalizado]);
 
         return new Response(JSON.stringify({ message: "Cliente agregado exitosamente" }), { status: 201 });
 
