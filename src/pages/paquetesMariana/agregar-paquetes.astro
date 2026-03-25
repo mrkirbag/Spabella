@@ -8,22 +8,28 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR PAQUETE</h1>
 
         <form action="/agregar-paquetes" id="formulario">
+            <label for="buscar-cliente">Buscar paciente</label>
             <input type="text" id="buscar-cliente" placeholder="Buscar paciente" autocomplete="off" />
             <br />
+            <label for="cliente">Paciente</label>
             <select name="cliente" id="cliente">
                 <option value="">Paciente</option>
             </select>
             <br />
 
+            <label for="descripcion">Descripción del paquete</label>
             <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Paquete" />
             <br />
 
+            <label for="nro-sesiones">Número de sesiones</label>
             <input type="text" name="nro-sesiones" id="nro-sesiones" placeholder="Número de sesiones" />
             <br />
 
+            <label for="monto">Monto en dólares</label>
             <input type="text" name="monto" id="monto" placeholder="Monto en dólares" />
             <br />
 
+            <label for="fecha">Fecha de compra</label>
             <input type="date" name="fecha" id="fecha" placeholder="Fecha de la compra" />
             <br />
 
@@ -150,6 +156,12 @@ import Layout from '../../layouts/Layout.astro';
             .then((data) => {
                 console.log(data);
                 formulario.reset();
+
+                if (data.paqueteId) {
+                    window.location.href = `/paquetesMariana/detalles?paquete=${data.paqueteId}`;
+                    return;
+                }
+
                 window.location.href = '/paquetesMariana';
             })  
         });

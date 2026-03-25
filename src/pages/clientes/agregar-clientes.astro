@@ -8,8 +8,10 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR NUEVO CLIENTE</h1>
 
         <form action="/agregar-clientes" id="formulario">
+            <label for="nombre">Nombre y apellido</label>
             <input type="text" name="nombre" id="nombre" placeholder="Nombre y Apellido" />
             <br />
+            <label for="numero">Número de teléfono</label>
             <input type="text" name="numero" id="numero" placeholder="Número de Teléfono" />
             <br />
             <button type="submit" style="margin-top: 20px;">Agregar</button>

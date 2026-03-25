@@ -6,7 +6,7 @@ import Layout from '../layouts/Layout.astro';
 
     <main class="container-general">
         <h1>LISTA DE SERVICIOS</h1>  
-        <ol id="lista-servicios"></ol>
+        <table id="lista-servicios"></table>
         
         <div class="container-boton_agregar">
             <a href="/servicios/agregar-servicios" class="boton-agregar">Agregar Servicio</a>
@@ -21,31 +21,47 @@ import Layout from '../layouts/Layout.astro';
                 const response = await fetch('/api/servicios');
                 const servicios = await response.json();
     
-                const lista = document.getElementById('lista-servicios');
-                lista.innerHTML = ''; 
+                const tabla = document.getElementById('lista-servicios');
+                tabla.innerHTML = ''; 
 
                 // Si no hay registros, mostrar mensaje de error
                 if (servicios.mensaje) { 
-                    lista.innerHTML = `<p style="color: red; text-align: center;">${servicios.mensaje}</p>`;
+                    tabla.innerHTML = `
+                        <tbody>
+                            <tr>
+                                <td colspan="4" style="color: red; text-align: center;">${servicios.mensaje}</td>
+                            </tr>
+                        </tbody>
+                    `;
                     return;
                 }
+
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Servicio</th>
+                        <th>% Spa</th>
+                        <th>% Empleado</th>
+                        <th>Acciones</th>
+                    </tr>
+                `;
+                tabla.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
     
                 // Crear elementos HTML
                 servicios.forEach(servicio => {
-                    const li = document.createElement('li');
-                    li.classList.add('lista-item');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${servicio.nombre.toUpperCase()}</td>
+                        <td>${servicio.porcentaje_spabella}%</td>
+                        <td>${servicio.porcentaje_empleado}%</td>
+                        <td><button type="button" class="boton-eliminar">Eliminar</button></td>
+                    `;
 
-                    li.textContent = `
-                                        ${servicio.nombre.toUpperCase()} | 
-                                        SPA: ${servicio.porcentaje_spabella}% - 
-                                        Empleado: ${servicio.porcentaje_empleado}%
-                                    `;
+                    const btnEliminar = tr.querySelector('.boton-eliminar');
 
-                    // Crear botón para eliminar servicio
-                    const btnEliminar = document.createElement('button');
-                    btnEliminar.textContent = 'Eliminar';
-
-                    btnEliminar.onclick = async () => {
+                    btnEliminar.addEventListener('click', async () => {
                         try {
                             const deleteResponse = await fetch('/api/servicios/delete', {
                                 method: 'DELETE',
@@ -54,17 +70,23 @@ import Layout from '../layouts/Layout.astro';
                             });
 
                             const result = await deleteResponse.json();
+
+                            if (!deleteResponse.ok) {
+                                alert(result.error || 'No se pudo eliminar el servicio.');
+                                return;
+                            }
+
                             alert(result.message);
-                            window.location.reload();
+                            tr.remove();
                         } catch (error) {
                             console.error("Error eliminando servicio:", error);
                         }
-                    };
+                    });
 
-                    // Agregar botón al elemento y añadir al listado
-                    li.appendChild(btnEliminar);
-                    lista.appendChild(li);
+                    tbody.appendChild(tr);
                 });
+
+                tabla.appendChild(tbody);
     
             } catch (error) {
                 console.error("Error obteniendo servicios:", error);

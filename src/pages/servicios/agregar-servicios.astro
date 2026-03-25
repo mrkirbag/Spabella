@@ -8,10 +8,13 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR SERVICIO</h1>
 
         <form action="/agregar-servicios" id="formulario">
+            <label for="descripcion">Descripción del servicio</label>
             <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
             <br />
+            <label for="porcentaje-spa">Porcentaje para Spa</label>
             <input type="text" name="porcentaje-spa" id="porcentaje-spa" placeholder="Porcentaje de SPA" />
             <br />
+            <label for="porcentaje-empleado">Porcentaje para empleado</label>
             <input type="text" name="porcentaje-empleado" id="porcentaje-empleado" placeholder="Porcentaje de Empleado" />
             <button type="submit" style="margin-top: 40px;">Agregar</button>
         </form>

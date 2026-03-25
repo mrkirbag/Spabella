@@ -14,9 +14,22 @@ export async function POST({ request }) {
             return new Response(JSON.stringify({ error: "Los campos no pueden estar vacios." }), { status: 400 });
         }
 
-        await db.execute("INSERT INTO paquetes (descripcion, numero_sesiones, monto_total, fecha_compra, cliente_id) VALUES (?, ?, ?, ?, ?)", [descripcion, nroSesionesTotal, montoTotal, fecha, clienteId]);
+        const insertResult = await db.execute(
+            "INSERT INTO paquetes (descripcion, numero_sesiones, monto_total, fecha_compra, cliente_id) VALUES (?, ?, ?, ?, ?)",
+            [descripcion, nroSesionesTotal, montoTotal, fecha, clienteId]
+        );
 
-        return new Response(JSON.stringify({ message: "Paquete agregado exitosamente" }), { status: 200 });
+        let paqueteId = Number(insertResult.lastInsertRowid ?? 0);
+
+        if (!paqueteId) {
+            const ultimoPaquete = await db.execute("SELECT id FROM paquetes ORDER BY id DESC LIMIT 1");
+            paqueteId = Number(ultimoPaquete.rows?.[0]?.id ?? 0);
+        }
+
+        return new Response(
+            JSON.stringify({ message: "Paquete agregado exitosamente", paqueteId }),
+            { status: 200 }
+        );
     
     } catch (error) {
         console.error("Error agregando paquete:", error);

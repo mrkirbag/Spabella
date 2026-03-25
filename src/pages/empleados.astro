@@ -6,7 +6,7 @@ import Layout from '../layouts/Layout.astro';
 
     <main class="container-general">
         <h1>LISTA DE EMPLEADOS</h1>  
-        <ol id="lista-empleados"></ol>
+        <table id="lista-empleados"></table>
         
         <div class="container-boton_agregar">
             <a href="/empleados/agregar-empleados" class="boton-agregar">Agregar Empleado</a>
@@ -21,29 +21,45 @@ import Layout from '../layouts/Layout.astro';
                 const response = await fetch('/api/empleados'); 
                 const empleados = await response.json();
     
-                const lista = document.getElementById('lista-empleados');
-                lista.innerHTML = ''; 
+                const tabla = document.getElementById('lista-empleados');
+                tabla.innerHTML = ''; 
 
                 // Si no hay registros, mostrar mensaje de error
                 if (empleados.mensaje) { 
-                    lista.innerHTML = `<p style="color: red; text-align: center;">${empleados.mensaje}</p>`;
+                    tabla.innerHTML = `
+                        <tbody>
+                            <tr>
+                                <td colspan="3" style="color: red; text-align: center;">${empleados.mensaje}</td>
+                            </tr>
+                        </tbody>
+                    `;
                     return;
                 }
 
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Cargo</th>
+                        <th>Acciones</th>
+                    </tr>
+                `;
+                tabla.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+
                 // Crear elementos HTML
                 empleados.forEach(empleado => {
-                    const li = document.createElement('li');
-                    li.classList.add('lista-item');
-                    li.textContent = `
-                                        ${empleado.nombre.toUpperCase()} | 
-                                        ${empleado.cargo.toUpperCase()}
-                                    `;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${empleado.nombre.toUpperCase()}</td>
+                        <td>${empleado.cargo.toUpperCase()}</td>
+                        <td><button type="button" class="boton-eliminar">Eliminar</button></td>
+                    `;
 
-                    // Crear botón para eliminar empleado
-                    const btnEliminar = document.createElement('button');
-                    btnEliminar.textContent = 'Eliminar';
+                    const btnEliminar = tr.querySelector('.boton-eliminar');
 
-                    btnEliminar.onclick = async () => {
+                    btnEliminar.addEventListener('click', async () => {
                         try {
                             const deleteResponse = await fetch('/api/empleados/delete', {
                                 method: 'DELETE',
@@ -52,17 +68,23 @@ import Layout from '../layouts/Layout.astro';
                             });
 
                             const result = await deleteResponse.json();
+
+                            if (!deleteResponse.ok) {
+                                alert(result.error || 'No se pudo eliminar el empleado.');
+                                return;
+                            }
+
                             alert(result.message);
-                            window.location.reload();
+                            tr.remove();
                         } catch (error) {
                             console.error("Error eliminando empleado:", error);
                         }
-                    };
+                    });
 
-                    // Agregar botón al elemento y añadir al listado
-                    li.appendChild(btnEliminar);
-                    lista.appendChild(li);
+                    tbody.appendChild(tr);
                 });
+
+                tabla.appendChild(tbody);
     
             } catch (error) {
                 console.error("Error obteniendo empleados:", error);

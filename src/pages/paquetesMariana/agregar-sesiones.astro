@@ -8,12 +8,15 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR SESIÓN</h1>
         <form id="formulario">
 
+            <label for="fecha">Fecha de la sesión</label>
             <input type="date" name="fecha" id="fecha" placeholder="Fecha de la sesión" required>
             <br />
 
+            <label for="numero-sesion">Número de sesión</label>
             <input type="text" name="numero-sesion" id="numero-sesion" placeholder="Número de sesión" required>
             <br />
 
+            <label for="abono-pago">Abono de pago</label>
             <input type="text" name="abono-pago" id="abono-pago" placeholder="Abono pago" required>
             <br />
 
@@ -26,51 +29,76 @@ import Layout from '../../layouts/Layout.astro';
         const url = new URL(window.location.href);
         const idPaquete = url.searchParams.get("paquete");
 
-        // 
         const formulario = document.getElementById("formulario");
         formulario.addEventListener("submit", async (event) => {
 
             event.preventDefault();
 
             const fecha = document.getElementById("fecha").value;
-            const numeroSesion = Number(document.getElementById("numero-sesion").value);
-            const abonoPago = Number(document.getElementById("abono-pago").value);
-
-            console.log(fecha, numeroSesion, abonoPago);
+            const numeroSesionInput = document.getElementById("numero-sesion").value.trim();
+            const abonoPagoInput = document.getElementById("abono-pago").value.trim();
 
             // Validar campos
-            if (fecha === '' || numeroSesion === '' || abonoPago === '') {
+            if (!fecha || numeroSesionInput === '' || abonoPagoInput === '') {
                 alert('Por favor, rellena todos los campos.');
-                formulario.reset();
-                return;
-            }
-            if (!/^\d*\.?\d+$/.test(abonoPago) || !/^\d*$/.test(numeroSesion)) {
-                alert('El monto y el número de sesiones deben ser números.');
-                formulario.reset();
                 return;
             }
 
-            // Enviar datos al servidor
-            const url = "/api/paquetesMariana/agregar-sesiones";
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ fecha, numeroSesion, abonoPago, idPaquete }),
-            })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Algo está mal con tu FETCH', response.status );
-                } 
-                return response.json();
-            })
-            .then((data) => {
-                console.log(data);
+            if (!/^\d+$/.test(numeroSesionInput)) {
+                alert('El número de sesión debe ser un número entero.');
+                return;
+            }
+
+            if (!/^\d+(\.\d{1,2})?$/.test(abonoPagoInput)) {
+                alert('El abono debe ser un número válido mayor o igual a 0.');
+                return;
+            }
+
+            const numeroSesion = Number(numeroSesionInput);
+            const abonoPago = Number(abonoPagoInput);
+
+            try {
+                const validacionResponse = await fetch(`/api/paquetesMariana/validar-sesiones?id=${idPaquete}`);
+                const validacionData = await validacionResponse.json();
+
+                if (!validacionResponse.ok) {
+                    throw new Error(validacionData.error || 'No se pudo validar el paquete.');
+                }
+
+                const saldoPendiente = Number(validacionData.validacionTotal?.monto ?? 0);
+                const sesionesRestantes = Number(validacionData.validacionTotal?.sesiones ?? 0);
+
+                if (sesionesRestantes <= 0) {
+                    alert('No se pueden agregar más sesiones para este paquete.');
+                    return;
+                }
+
+                if (abonoPago > saldoPendiente) {
+                    alert(`El abono no puede ser mayor al saldo pendiente (${saldoPendiente} USD).`);
+                    return;
+                }
+
+                const guardarResponse = await fetch('/api/paquetesMariana/agregar-sesiones', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ fecha, numeroSesion, abonoPago, idPaquete }),
+                });
+
+                const resultado = await guardarResponse.json();
+
+                if (!guardarResponse.ok) {
+                    alert(resultado.error || 'No se pudo agregar la sesión.');
+                    return;
+                }
+
                 formulario.reset();
                 window.location.href = `/paquetesMariana/detalles?paquete=${idPaquete}`;
-;
-            })
+            } catch (error) {
+                console.error('Error agregando sesión:', error);
+                alert('Ocurrió un error al guardar la sesión.');
+            }
         });
 
 

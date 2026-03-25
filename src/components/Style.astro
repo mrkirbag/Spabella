@@ -42,6 +42,16 @@
         }
     }
 
+    label {
+        display: block;
+        width: 300px;
+        margin: 0 auto 0.35rem;
+        text-align: left;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #4D4D4D;
+    }
+
     button{
         background: #DDB57F;
         color: #4D4D4D;
@@ -164,6 +174,17 @@
         margin-bottom: 1.5lh;
     }
 
+    .campo-busqueda {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .modulo-busqueda label {
+        width: auto;
+        margin: 0;
+    }
+
     .oculto {
         display: none;
     }
@@ -238,6 +259,10 @@
             padding: 8px;
             text-align: center;
             border-radius: 6px;
+        }
+
+        label {
+            width: 100%;
         }
 
         button {

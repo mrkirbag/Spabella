@@ -7,7 +7,8 @@ import Layout from '../layouts/Layout.astro';
     <main class="container-general">
         <form id="formulario" action="/validacion-login" method="POST">
             <h1>Bienvenida a SpaBella, Mariana!</h1>
-            <input type="text" id="username" name="username" autocomplete="username" style="display: none;" />
+            <input type="text" id="username" name="username" autocomplete="username" aria-label="Usuario" style="display: none;" />
+            <label for="password-user">Contraseña</label>
             <input type="password" name="password-user" id="password-user" placeholder="Contraseña" autocomplete="new-password" />
             <br />
             <button type="submit" style="margin-top: 40px;">Acceder</button>

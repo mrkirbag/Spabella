@@ -15,12 +15,14 @@ import Layout from '../layouts/Layout.astro';
         <h1>LISTA DE VENTAS</h1> 
 
         <div class="modulo-busqueda">
-            <input type="date" id="fechaSeleccionada" value={fechaCompleta} />
+            <div class="campo-busqueda">
+                <label for="fechaSeleccionada">Fecha</label>
+                <input type="date" id="fechaSeleccionada" value={fechaCompleta} />
+            </div>
             <button id="buscarVentas">Buscar Ventas</button>
         </div>
 
-
-        <ol id="listaVentas"></ol>
+        <table id="listaVentas"></table>
 
         <div class="container-boton_agregar">
             <a href="/ventas/agregar-ventas" class="boton-agregar">Agregar Venta</a>
@@ -38,15 +40,35 @@ import Layout from '../layouts/Layout.astro';
             const response = await fetch(`/api/ventas/vista-ventas?fecha=${fecha}`);
             const ventas = await response.json();
 
-            const listaVentas = document.getElementById("listaVentas");
+            const tablaVentas = document.getElementById("listaVentas");
 
-            listaVentas.innerHTML = ""; // Limpiar antes de agregar nuevas ventas
+            tablaVentas.innerHTML = "";
 
             // Si no hay registros, mostrar mensaje de error
             if (ventas.mensaje) { 
-                listaVentas.innerHTML = `<p style="color: red; text-align: center;">${ventas.mensaje}</p>`;
+                tablaVentas.innerHTML = `
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="color: red; text-align: center;">${ventas.mensaje}</td>
+                        </tr>
+                    </tbody>
+                `;
                 return;
             }
+
+            const thead = document.createElement("thead");
+            thead.innerHTML = `
+                <tr>
+                    <th>Fecha</th>
+                    <th>Empleado</th>
+                    <th>Servicio</th>
+                    <th>Descripcion</th>
+                    <th>Monto</th>
+                </tr>
+            `;
+            tablaVentas.appendChild(thead);
+
+            const tbody = document.createElement("tbody");
 
             ventas.forEach(venta => {
 
@@ -55,43 +77,19 @@ import Layout from '../layouts/Layout.astro';
                 const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
                 const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
 
-                // Crear elemento HTML
-                const text = `
-                                ${fechaFormateada} | 
-                                ${venta.empleado.toUpperCase()} | 
-                                Total: ${venta.monto}$<br>
-                                ${venta.servicio.toUpperCase()} - 
-                                ${venta.descripcion}
-                            `;
-                            
-                const li = document.createElement("li");
-                li.classList.add("lista-item");
-                li.innerHTML = text;
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${fechaFormateada}</td>
+                    <td>${venta.empleado.toUpperCase()}</td>
+                    <td>${venta.servicio.toUpperCase()}</td>
+                    <td>${venta.descripcion}</td>
+                    <td>${venta.monto}$</td>
+                `;
 
-                // Crear botón para eliminar venta
-                const btnEliminar = document.createElement('button');
-                btnEliminar.textContent = 'Eliminar';
-
-                btnEliminar.onclick = async () => {
-                    try {
-                        const deleteResponse = await fetch('/api/ventas/delete', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: venta.id })
-                        });
-
-                        const result = await deleteResponse.json();
-                        alert(result.message);
-                        window.location.reload();
-                    } catch (error) {
-                        console.error("Error eliminando venta:", error);
-                    }
-                };
-
-                // Agregar botón al elemento y añadir al listado
-                li.appendChild(btnEliminar);
-                listaVentas.appendChild(li);
+                tbody.appendChild(tr);
             });     
+
+            tablaVentas.appendChild(tbody);
         });
     </script>
 

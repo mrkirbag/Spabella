@@ -8,14 +8,18 @@ import Layout from '../../layouts/Layout.astro';
         <h1 id="titulo-formulario">AGREGAR RESERVA</h1>
 
         <form action="/agregar-reservas" id="formulario">
+            <label for="fecha">Fecha</label>
             <input type="date" name="fecha" id="fecha"/>
             <br />
+            <label for="descripcion">Descripción del servicio</label>
             <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
             <br />
             <div id="contenedor-buscar-cliente">
+                <label for="buscar-cliente">Buscar paciente</label>
                 <input type="text" id="buscar-cliente" placeholder="Buscar paciente" autocomplete="off" />
                 <br />
             </div>
+            <label for="cliente-id">Paciente</label>
             <select name="cliente-id" id="cliente-id">
                 <option value="">Paciente</option>
             </select>

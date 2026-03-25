@@ -7,14 +7,17 @@ import Layout from '../layouts/Layout.astro';
         <h1>AGENDA DE LOS PRÓXIMOS 5 DÍAS</h1>
 
         <div class="modulo-busqueda">
-            <input type="date" id="fechaSeleccionada" />
+            <div class="campo-busqueda">
+                <label for="fechaSeleccionada">Fecha</label>
+                <input type="date" id="fechaSeleccionada" />
+            </div>
             <button type="button" id="verProximos">Ver próximos 5 días</button>
         </div>
 
         <table id="listaReservas"></table>
         
         <div class="container-boton_agregar">
-            <a href="/reservas/agregar-reservas" class="boton-agregar">Agregar Reserva</a>
+            <a href="/reservas/agregar-reservas" class="boton-agregar">Agregar Cita</a>
         </div>
 
         <div class="container-boton_agregar">

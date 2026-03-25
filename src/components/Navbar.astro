@@ -4,7 +4,7 @@ import ServiciosSVG from '../assets/servicios.svg';
 import VentasSVG from '../assets/ventas.svg';
 import ReportesSVG from '../assets/reportes.svg';
 import RecordatoriosSVG from '../assets/recordatorios.svg';
-import LoginSVG from '../assets/login.svg';
+import TratamientosSVG from '../assets/tratamientos.svg';
 ---
 
 <nav>
@@ -13,39 +13,39 @@ import LoginSVG from '../assets/login.svg';
             <img src="/logo.png" alt="logo" width="60" height="60" />
         </li>
         <li>
-            <a href="/empleados">
-                <EmpleadosSVG width={60} height={60} />
-                <span>Empleados</span>
+            <a href="/empleados" class="menu-link">
+                <span class="icon-box"><EmpleadosSVG width={60} height={60} /></span>
+                <span class="menu-text">Empleados</span>
             </a>
         </li>
         <li>
-            <a href="/servicios">
-                <ServiciosSVG width={60} height={60} />
-                <span>Servicios</span>
+            <a href="/servicios" class="menu-link">
+                <span class="icon-box"><ServiciosSVG width={60} height={60} /></span>
+                <span class="menu-text">Servicios</span>
             </a>
         </li>
         <li>
-            <a href="/ventas">
-                <VentasSVG width={60} height={60} />
-                <span>Ventas</span>
+            <a href="/ventas" class="menu-link">
+                <span class="icon-box"><VentasSVG width={60} height={60} /></span>
+                <span class="menu-text">Ventas</span>
             </a>
         </li>
         <li>
-            <a href="/reportes">
-                <ReportesSVG width={60} height={60} />
-                <span>Facturas</span>
+            <a href="/reportes" class="menu-link">
+                <span class="icon-box"><ReportesSVG width={60} height={60} /></span>
+                <span class="menu-text">Facturas</span>
             </a>
         </li>
         <li>
-            <a href="/reservas">
-                <RecordatoriosSVG width={60} height={60} />
-                <span>Calendario</span>
+            <a href="/reservas" class="menu-link">
+                <span class="icon-box"><RecordatoriosSVG width={60} height={60} /></span>
+                <span class="menu-text">Agenda</span>
             </a>
         </li>
-        <li class="menu-paquetes">
-            <a href="/paquetesMariana">
-                <LoginSVG width={44} height={44} />
-                <span>Paquetes Mariana</span>
+        <li>
+            <a href="/paquetesMariana" class="menu-link">
+                <span class="icon-box"><TratamientosSVG width={54} height={54} /></span>
+                <span class="menu-text">Paquetes</span>
             </a>
         </li>
     </ul>
@@ -72,7 +72,8 @@ import LoginSVG from '../assets/login.svg';
     ul{
         display: flex;
         flex-direction: row;
-        gap: 2rem;
+        align-items: flex-start;
+        gap: .8rem;
         list-style: none;
     }
 
@@ -87,26 +88,42 @@ import LoginSVG from '../assets/login.svg';
 
     }
 
-    .menu-paquetes a {
-        padding-top: 6px;
-    }
-
-    a{
+    .menu-link{
         text-decoration: none;
         display: flex;
         flex-direction: column;
-        align-items: center;    
+        align-items: center;
+        justify-content: flex-start;
+        width: 72px;
+        min-height: 82px;
 
-            & span{
-                font-size: .7rem;
-                font-weight: 600;
-                color: #4D4D4D;
-            }
+        &:hover .menu-text{
+            color: #DDB57F;
+            transition: all .25s ease-in-out;
+        }
+    }
 
-            &:hover span{
-                color: #DDB57F;
-                transition: all .25s ease-in-out;
-            }
+    .icon-box{
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .icon-box :global(svg){
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    .menu-text{
+        margin-top: 6px;
+        font-size: .7rem;
+        line-height: 1;
+        font-weight: 600;
+        color: #4D4D4D;
     }
 
     @media (max-width: 768px) {

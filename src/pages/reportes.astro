@@ -8,8 +8,14 @@ import Layout from '../layouts/Layout.astro';
         <h1>FACTURACIÓN</h1>
 
         <div class="modulo-busqueda">
-            <input type="date" id="fechaDesde" />
-            <input type="date" id="fechaHasta" />
+            <div class="campo-busqueda">
+                <label for="fechaDesde">Desde</label>
+                <input type="date" id="fechaDesde" />
+            </div>
+            <div class="campo-busqueda">
+                <label for="fechaHasta">Hasta</label>
+                <input type="date" id="fechaHasta" />
+            </div>
             <button id="buscarFacturacion">Generar Facturación</button>
         </div>
 

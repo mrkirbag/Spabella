@@ -15,16 +15,21 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR VENTA</h1>
 
         <form action="/agregar-ventas" id="formulario">
+            <label for="fecha">Fecha</label>
             <input type="date" name="fecha" id="fecha" value={fechaCompleta}/>
             <br />
+            <label for="descripcion">Descripción del servicio</label>
             <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
             <br />
+            <label for="monto">Monto en dólares</label>
             <input type="text" name="monto" id="monto" placeholder="Monto en dólares" />
             <br />
+            <label for="empleado-id">Empleado</label>
             <select name="empleado-id" id="empleado-id">
                 <option value="">Selecciona un Empleado</option>
             </select>
             <br />
+            <label for="servicio-id">Servicio</label>
             <select name="servicio-id" id="servicio-id">
                 <option value="">Selecciona un Servicio</option>
             </select>

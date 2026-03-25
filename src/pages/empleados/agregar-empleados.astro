@@ -8,8 +8,10 @@ import Layout from '../../layouts/Layout.astro';
         <h1>AGREGAR EMPLEADO</h1>
 
         <form action="/agregar-empleado" id="formulario">
+            <label for="nombre">Nombre y apellido</label>
             <input type="text" name="nombre" id="nombre" placeholder="Nombre y Apellido" />
             <br />
+            <label for="cargo">Cargo</label>
             <input type="text" name="cargo" id="cargo" placeholder="Cargo" />
             <br />
             <button type="submit" style="margin-top: 20px;">Agregar</button>
