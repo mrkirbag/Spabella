@@ -1,0 +1,179 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+    <main class="container-general">
+        <h1>DEUDORES DE PAQUETES</h1>
+
+        <table id="listaDeudores"></table>
+    </main>
+
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', async () => {
+            const table = document.getElementById('listaDeudores');
+
+            const formatearFecha = (fecha) => {
+                if (!fecha) return 'Sin fecha';
+
+                const fechaObjeto = new Date(`${fecha}T00:00:00`);
+                const opcionesFormato = { day: '2-digit', month: '2-digit', year: 'numeric' };
+                return fechaObjeto.toLocaleDateString('es-ES', opcionesFormato);
+            };
+
+            const construirTelefonoWhatsapp = (celular) => {
+                const celularLimpio = String(celular || '').replace(/\D/g, '');
+                let numeroWhatsapp = celularLimpio;
+
+                if (numeroWhatsapp.startsWith('0')) {
+                    numeroWhatsapp = numeroWhatsapp.slice(1);
+                }
+
+                if (numeroWhatsapp.length === 9) {
+                    numeroWhatsapp = `58${numeroWhatsapp}`;
+                }
+
+                return {
+                    celularLimpio,
+                    numeroWhatsapp
+                };
+            };
+
+            const renderDeudores = (deudores) => {
+                table.innerHTML = '';
+
+                if (deudores.mensaje) {
+                    table.innerHTML = `<p style="color: red; text-align: center;">${deudores.mensaje}</p>`;
+                    return;
+                }
+
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Teléfono</th>
+                        <th>Paquete</th>
+                        <th>Fecha del paquete</th>
+                        <th>Último abono</th>
+                        <th>Saldo pendiente</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+
+                deudores.forEach((deudor) => {
+                    const fechaPaquete = formatearFecha(deudor.fecha_compra);
+                    const fechaUltimoAbono = deudor.ultima_fecha_abono
+                        ? formatearFecha(deudor.ultima_fecha_abono)
+                        : 'NO HA ABONADO';
+                    const saldoPendiente = Number(deudor.saldo_pendiente || 0).toFixed(2);
+                    const linkDetallePaquete = `/paquetesMariana/detalles?paquete=${deudor.paquete_id}`;
+
+                    const { celularLimpio, numeroWhatsapp } = construirTelefonoWhatsapp(deudor.celular);
+                    const mensajeWhatsapp = encodeURIComponent(
+                        `Hola ${String(deudor.nombre || '').toUpperCase()}, te escribimos de Spabella. Tienes un saldo pendiente de ${saldoPendiente} USD del paquete ${String(deudor.paquete || '').toUpperCase()} (fecha ${fechaPaquete}). Por favor, contáctanos para ayudarte con el pago.`
+                    );
+
+                    const linkWhatsapp = numeroWhatsapp
+                        ? `https://wa.me/${numeroWhatsapp}?text=${mensajeWhatsapp}`
+                        : '#';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${String(deudor.nombre || '').toUpperCase()}</td>
+                        <td>
+                            <a href="${linkWhatsapp}" target="_blank" rel="noopener noreferrer" class="link-whatsapp">
+                                <span class="link-whatsapp__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M4 5.5C4 4.67157 4.67157 4 5.5 4H18.5C19.3284 4 20 4.67157 20 5.5V14.5C20 15.3284 19.3284 16 18.5 16H9.5L5.2 19.3C4.53956 19.8063 3.6 19.3353 3.6 18.5V16.5C3.6 16.2239 3.82386 16 4.1 16H5.5C4.67157 16 4 15.3284 4 14.5V5.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                                        <path d="M8 8.5H16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                        <path d="M8 11.5H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                    </svg>
+                                </span>
+                                <span>${celularLimpio ? `0${celularLimpio}` : 'Sin teléfono'}</span>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="${linkDetallePaquete}" class="boton-detalle link-paquete">
+                                <span class="link-paquete__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M10 14L14 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M11 6H16C16.5523 6 17 6.44772 17 7V12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M8 8H7C6.44772 8 6 8.44772 6 9V17C6 17.5523 6.44772 18 7 18H15C15.5523 18 16 17.5523 16 17V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                ${String(deudor.paquete || '').toUpperCase()}
+                            </a>
+                        </td>
+                        <td>${fechaPaquete}</td>
+                        <td>${fechaUltimoAbono}</td>
+                        <td class="saldo-pendiente">${saldoPendiente} USD</td>
+                    `;
+
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+            };
+
+            try {
+                const response = await fetch('/api/deudores');
+                const deudores = await response.json();
+                renderDeudores(deudores);
+            } catch (error) {
+                console.error('Error obteniendo deudores:', error);
+            }
+        });
+    </script>
+
+    <style is:global>
+        .link-whatsapp {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #4D4D4D;
+            font-weight: 700;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .link-whatsapp__icon {
+            display: inline-flex;
+            color: #DDB57F;
+        }
+
+        .link-whatsapp:hover {
+            color: #DDB57F;
+            border-color: #DDB57F;
+        }
+
+        .link-whatsapp:hover .link-whatsapp__icon {
+            color: #4D4D4D;
+        }
+
+        .link-paquete {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .link-paquete__icon {
+            display: inline-flex;
+            color: #DDB57F;
+            transition: color 0.2s ease;
+        }
+
+        .link-paquete:hover .link-paquete__icon {
+            color: #4D4D4D;
+        }
+
+        .saldo-pendiente {
+            color: #C62828;
+            font-weight: 700;
+        }
+    </style>
+</Layout>

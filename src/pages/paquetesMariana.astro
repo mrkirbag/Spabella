@@ -74,10 +74,13 @@ import Layout from '../layouts/Layout.astro';
             renderClientes(buscarClienteInput.value);
         });
 
-        // Mostrar paquetes del cliente seleccionado
-        clienteSelect.addEventListener("change", async () => {
-
+        const cargarPaquetesCliente = async () => {
             const getCliente = clienteSelect.value;
+
+            if (!getCliente) {
+                document.getElementById("listaPaquetes").innerHTML = "";
+                return;
+            }
 
             const response = await fetch(`/api/paquetesMariana/vista-paquetes?cliente=${getCliente}`);
             const paquetes = await response.json();
@@ -100,6 +103,7 @@ import Layout from '../layouts/Layout.astro';
                         <th>Número de sesiones</th>
                         <th>Monto Total</th>
                         <th>DETALLES</th>
+                        <th>ACCIONES</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -122,6 +126,12 @@ import Layout from '../layouts/Layout.astro';
                 accederDetalle.classList.add('boton-detalle');
                 accederDetalle.href = `/paquetesMariana/detalles?paquete=${paquete.id}`; // Redirige a la nueva vista
 
+                const eliminarPaquete = document.createElement('button');
+                eliminarPaquete.textContent = 'Eliminar';
+                eliminarPaquete.classList.add('boton-eliminar-paquete');
+                eliminarPaquete.type = 'button';
+                eliminarPaquete.dataset.id = paquete.id;
+
                 // Crear elementos HTML
                 const item = document.createElement("tr");
                 item.innerHTML = `
@@ -130,6 +140,7 @@ import Layout from '../layouts/Layout.astro';
                                     <td>${paquete.numero_sesiones} SES.</td>
                                     <td>${paquete.monto_total} USD</td>
                                     <td>${accederDetalle.outerHTML}</td>
+                                    <td>${eliminarPaquete.outerHTML}</td>
                                 `;
 
                 tbody.appendChild(item);
@@ -137,7 +148,46 @@ import Layout from '../layouts/Layout.astro';
 
             listaPaquetes.appendChild(tabla);
 
-        });
+            document.querySelectorAll('.boton-eliminar-paquete').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const paqueteId = Number(btn.dataset.id);
+                    const confirmar = window.confirm('Esta accion eliminara el paquete y sus sesiones. Deseas continuar?');
+
+                    if (!confirmar) return;
+
+                    const claveAdmin = window.prompt('Ingresa la clave admin para eliminar este paquete:');
+
+                    if (!claveAdmin) {
+                        alert('La clave admin es obligatoria.');
+                        return;
+                    }
+
+                    try {
+                        const deleteResponse = await fetch('/api/paquetesMariana/delete', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: paqueteId, claveAdmin })
+                        });
+
+                        const deleteData = await deleteResponse.json();
+
+                        if (!deleteResponse.ok) {
+                            alert(deleteData.error || 'No se pudo eliminar el paquete.');
+                            return;
+                        }
+
+                        alert(deleteData.message || 'Paquete eliminado exitosamente.');
+                        await cargarPaquetesCliente();
+                    } catch (error) {
+                        console.error('Error eliminando paquete:', error);
+                        alert('Ocurrio un error eliminando el paquete.');
+                    }
+                });
+            });
+        };
+
+        // Mostrar paquetes del cliente seleccionado
+        clienteSelect.addEventListener("change", cargarPaquetesCliente);
 
     </script>
 

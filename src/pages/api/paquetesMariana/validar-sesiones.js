@@ -20,11 +20,12 @@ export async function GET({ request }) {
         const numeroSesiones = sesiones.rows[0]?.numero_sesiones ?? 0;
 
         // Cantidad de registros de sesiones registradas del paquete seleccionado
-        const resultado = await db.execute(`SELECT COUNT(*) AS total_sesiones FROM sesiones WHERE paquete_id = ?`, [paqueteId]);
+        const resultado = await db.execute(`SELECT COUNT(*) AS total_sesiones FROM sesiones WHERE paquete_id = ? AND numero_sesion > 0`, [paqueteId]);
         const totalSesiones = resultado.rows[0]?.total_sesiones ?? 0;
 
         // Calculo de Sesiones Restantes
         const validacionSesiones = numeroSesiones - totalSesiones;
+        const proximaSesion = totalSesiones + 1;
 
         // VALIDAR MONTO RESTANTE
 
@@ -42,7 +43,10 @@ export async function GET({ request }) {
         // Creo un objeto con el saldo y sesiones pendientes
         const validacionTotal = {
             monto: validacionMonto,
-            sesiones: validacionSesiones
+            sesiones: validacionSesiones,
+            sesionesRealizadas: totalSesiones,
+            sesionesTotales: numeroSesiones,
+            proximaSesion
         }
 
         return new Response(JSON.stringify({ validacionTotal }), { status: 200 });

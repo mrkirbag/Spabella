@@ -5,6 +5,8 @@ import VentasSVG from '../assets/ventas.svg';
 import ReportesSVG from '../assets/reportes.svg';
 import RecordatoriosSVG from '../assets/recordatorios.svg';
 import TratamientosSVG from '../assets/tratamientos.svg';
+import MoneySVG from '../assets/money.svg';
+import CoinSVG from '../assets/coin.svg';
 ---
 
 <nav>
@@ -43,6 +45,18 @@ import TratamientosSVG from '../assets/tratamientos.svg';
             </a>
         </li>
         <li>
+            <a href="/deudores" class="menu-link">
+                <span class="icon-box"><MoneySVG width={60} height={60} /></span>
+                <span class="menu-text">Deudores</span>
+            </a>
+        </li>
+        <li>
+            <a href="/tasas" class="menu-link">
+                <span class="icon-box"><CoinSVG width={60} height={60} /></span>
+                <span class="menu-text">Tasa a BS</span>
+            </a>
+        </li>
+        <li>
             <a href="/paquetesMariana" class="menu-link">
                 <span class="icon-box"><TratamientosSVG width={54} height={54} /></span>
                 <span class="menu-text">Paquetes</span>
@@ -60,8 +74,8 @@ import TratamientosSVG from '../assets/tratamientos.svg';
         border-radius: 10px;
         margin-bottom: 30px;
 
-        margin-left: 20%;
-        margin-right: 20%;
+        margin-left: 10%;
+        margin-right: 10%;
         padding: 2rem 1rem;
 
         backdrop-filter: blur(8px);

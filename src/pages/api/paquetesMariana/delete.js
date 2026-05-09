@@ -50,15 +50,16 @@ export async function DELETE({ request }) {
             return new Response(JSON.stringify({ error: "Clave admin incorrecta." }), { status: 401 });
         }
 
-        const result = await db.execute("DELETE FROM ventas WHERE id = ?", [id]);
+        await db.execute("DELETE FROM sesiones WHERE paquete_id = ?", [id]);
+        const result = await db.execute("DELETE FROM paquetes WHERE id = ?", [id]);
 
         if (!result.rowsAffected) {
-            return new Response(JSON.stringify({ error: "La venta no existe." }), { status: 404 });
+            return new Response(JSON.stringify({ error: "El paquete no existe." }), { status: 404 });
         }
 
-        return new Response(JSON.stringify({ message: "Venta eliminada exitosamente." }), { status: 200 });
+        return new Response(JSON.stringify({ message: "Paquete eliminado exitosamente." }), { status: 200 });
     } catch (error) {
-        console.error("Error eliminando venta:", error);
+        console.error("Error eliminando paquete:", error);
         return new Response(JSON.stringify({ error: "Error interno del servidor" }), { status: 500 });
     }
 }

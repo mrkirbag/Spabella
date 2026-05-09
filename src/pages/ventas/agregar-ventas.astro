@@ -18,37 +18,59 @@ import Layout from '../../layouts/Layout.astro';
             <label for="fecha">Fecha</label>
             <input type="date" name="fecha" id="fecha" value={fechaCompleta}/>
             <br />
-            <label for="descripcion">Descripción del servicio</label>
-            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
-            <br />
-            <label for="monto">Monto en dólares</label>
-            <input type="text" name="monto" id="monto" placeholder="Monto en dólares" />
+            <label for="servicio-id">Servicio</label>
+            <select name="servicio-id" id="servicio-id">
+                <option value="">Selecciona un Servicio</option>
+            </select>
             <br />
             <label for="empleado-id">Empleado</label>
             <select name="empleado-id" id="empleado-id">
                 <option value="">Selecciona un Empleado</option>
             </select>
             <br />
-            <label for="servicio-id">Servicio</label>
-            <select name="servicio-id" id="servicio-id">
-                <option value="">Selecciona un Servicio</option>
-            </select>
+            <label for="monto-total-usd">Monto total en USD</label>
+            <input type="text" name="monto-total-usd" id="monto-total-usd" placeholder="Monto total en dólares" />
+            <small id="detalleTotalBs" class="detalle-monto"></small>
+            <br />
+            <label for="tasa-bs">Tasa BS</label>
+            <input type="text" name="tasa-bs" id="tasa-bs" readonly />
+            <small id="mensaje-tasa" class="mensaje-tasa"></small>
+            <br />
+            <label for="monto-usd">Pago en dólares</label>
+            <input type="text" name="monto-usd" id="monto-usd" placeholder="Monto pagado en dólares" />
+            <br />
+            <label for="monto-bs">Pago en bolívares</label>
+            <input type="text" name="monto-bs" id="monto-bs" placeholder="Monto pagado en bolívares" />
+            <small id="detalleDivision" class="detalle-monto"></small>
             <br />
             <button type="submit" style="margin-top: 40px;">Agregar</button>
         </form>
 
     <script type="module">
 
+        let tasaBsActual = 0;
+        let actualizandoPagos = false;
+        let ultimoCampoEditado = 'usd';
+
         document.addEventListener("DOMContentLoaded", async () => {
 
             const empleadoSelect = document.getElementById("empleado-id");
             const servicioSelect = document.getElementById("servicio-id");
+            const tasaBsInput = document.getElementById("tasa-bs");
+            const montoBsInput = document.getElementById("monto-bs");
+            const mensajeTasa = document.getElementById("mensaje-tasa");
 
             try {
                 const response = await fetch("/api/ventas/rellenar-selects");
                 const data = await response.json();
 
-                console.log(data.empleadosEnvios);
+                tasaBsActual = Number(data.tasaBs ?? 0);
+                tasaBsInput.value = tasaBsActual > 0 ? tasaBsActual.toFixed(2) : 'No configurada';
+
+                if (tasaBsActual <= 0) {
+                    montoBsInput.disabled = true;
+                    mensajeTasa.textContent = 'Configura la tasa bs en la base de datos para registrar pagos en bolívares.';
+                }
 
                 // Rellenar select de empleados
                 data.empleadosEnvios.forEach(empleado => {
@@ -69,29 +91,176 @@ import Layout from '../../layouts/Layout.astro';
             } catch (error) {
                 console.error("Error al cargar empleados y servicios:", error);
             }
+
+            sincronizarPagosDesdeTotal();
         });
 
         const formulario = document.getElementById('formulario');
+        const montoTotalUsdInput = document.getElementById('monto-total-usd');
+        const montoUsdInput = document.getElementById('monto-usd');
+        const montoBsInput = document.getElementById('monto-bs');
+        const detalleTotalBs = document.getElementById('detalleTotalBs');
+        const detalleDivision = document.getElementById('detalleDivision');
+
+        const parseMonto = (value) => {
+            const texto = String(value || '').trim();
+            if (!texto) return 0;
+            return Number(texto);
+        };
+
+        const formatearMonto = (valor) => Number(valor || 0).toFixed(2);
+
+        const actualizarDetalleTotal = () => {
+            const totalUsd = parseMonto(montoTotalUsdInput.value);
+
+            if (totalUsd > 0 && tasaBsActual > 0) {
+                detalleTotalBs.textContent = `Equivale a ${formatearMonto(totalUsd * tasaBsActual)} BS segun la tasa actual.`;
+                return;
+            }
+
+            detalleTotalBs.textContent = '';
+        };
+
+        const actualizarDetalleDivision = () => {
+            const pagoUsd = parseMonto(montoUsdInput.value);
+            const pagoBs = parseMonto(montoBsInput.value);
+            const pagoBsEnUsd = pagoBs > 0 && tasaBsActual > 0 ? pagoBs / tasaBsActual : 0;
+            const totalUsd = parseMonto(montoTotalUsdInput.value);
+            const restanteUsd = ultimoCampoEditado === 'bs'
+                ? Math.max(totalUsd - pagoBsEnUsd, 0)
+                : Math.max(totalUsd - pagoUsd, 0);
+            const restanteBs = tasaBsActual > 0 ? (restanteUsd * tasaBsActual) : 0;
+            const cubiertoUsd = Math.max(totalUsd - restanteUsd, 0);
+
+            if (totalUsd > 0) {
+                detalleDivision.textContent = `Restante en USD: ${formatearMonto(restanteUsd)} | Restante en BS: ${formatearMonto(restanteBs)} | Cubierto: ${formatearMonto(cubiertoUsd)} USD`;
+                return;
+            }
+
+            detalleDivision.textContent = '';
+        };
+
+        const sincronizarPagosDesdeUsd = () => {
+            if (actualizandoPagos) return;
+            actualizandoPagos = true;
+
+            const totalUsd = parseMonto(montoTotalUsdInput.value);
+            let pagoUsd = parseMonto(montoUsdInput.value);
+
+            if (pagoUsd > totalUsd) {
+                pagoUsd = totalUsd;
+                montoUsdInput.value = formatearMonto(pagoUsd);
+            }
+
+            const restanteUsd = Math.max(totalUsd - pagoUsd, 0);
+            const equivalenteBs = tasaBsActual > 0 ? restanteUsd * tasaBsActual : 0;
+
+            montoBsInput.value = restanteUsd > 0 ? formatearMonto(equivalenteBs) : '';
+
+            actualizarDetalleTotal();
+            actualizarDetalleDivision();
+            actualizandoPagos = false;
+        };
+
+        const sincronizarPagosDesdeBs = () => {
+            if (actualizandoPagos) return;
+            actualizandoPagos = true;
+
+            const totalUsd = parseMonto(montoTotalUsdInput.value);
+            let pagoBs = parseMonto(montoBsInput.value);
+            let pagoBsEnUsd = pagoBs > 0 && tasaBsActual > 0 ? pagoBs / tasaBsActual : 0;
+
+            if (pagoBsEnUsd > totalUsd) {
+                pagoBsEnUsd = totalUsd;
+                pagoBs = tasaBsActual > 0 ? totalUsd * tasaBsActual : 0;
+                montoBsInput.value = pagoBs > 0 ? formatearMonto(pagoBs) : '';
+            }
+
+            const restanteUsd = Math.max(totalUsd - pagoBsEnUsd, 0);
+            montoUsdInput.value = restanteUsd > 0 ? formatearMonto(restanteUsd) : '';
+
+            actualizarDetalleTotal();
+            actualizarDetalleDivision();
+            actualizandoPagos = false;
+        };
+
+        const sincronizarPagosDesdeTotal = () => {
+            const totalUsd = parseMonto(montoTotalUsdInput.value);
+
+            if (totalUsd <= 0) {
+                montoUsdInput.value = '';
+                montoBsInput.value = '';
+                actualizarDetalleTotal();
+                actualizarDetalleDivision();
+                return;
+            }
+
+            // Al editar el total, por defecto se completa todo en USD y BS queda como restante.
+            ultimoCampoEditado = 'usd';
+            montoUsdInput.value = formatearMonto(totalUsd);
+            sincronizarPagosDesdeUsd();
+        };
+
+        montoTotalUsdInput.addEventListener('input', () => {
+            sincronizarPagosDesdeTotal();
+        });
+
+        montoUsdInput.addEventListener('input', () => {
+            ultimoCampoEditado = 'usd';
+            sincronizarPagosDesdeUsd();
+        });
+
+        montoBsInput.addEventListener('input', () => {
+            ultimoCampoEditado = 'bs';
+            sincronizarPagosDesdeBs();
+        });
 
         formulario.addEventListener('submit', (event) => {
         
             event.preventDefault();
 
             const fecha = document.getElementById('fecha').value;
-            const descripcion = document.getElementById('descripcion').value;
-            const monto = document.getElementById('monto').value;
+            const montoTotalUsd = montoTotalUsdInput.value.trim();
+            const montoUsd = montoUsdInput.value.trim();
+            const montoBs = montoBsInput.value.trim();
             const empleadoId = document.getElementById('empleado-id').value;
             const servicioId = document.getElementById('servicio-id').value;
+            const montoTotalUsdValor = parseMonto(montoTotalUsd);
+            const montoUsdValor = parseMonto(montoUsd);
+            const montoBsValor = parseMonto(montoBs);
 
             // Validar campos
-            if (fecha === '' || monto === '' || empleadoId === '' || servicioId === '' || descripcion === '') {
+            if (fecha === '' || empleadoId === '' || servicioId === '' || montoTotalUsd === '') {
                 alert('Por favor, rellena todos los campos.');
-                formulario.reset();
                 return;
             }
-            if (!/^\d*\.?\d+$/.test(monto)) {
-                alert('El monto debe ser un número positivo.');
-                formulario.reset();
+
+            if ((montoTotalUsd && !/^\d*\.?\d+$/.test(montoTotalUsd)) || (montoUsd && !/^\d*\.?\d+$/.test(montoUsd)) || (montoBs && !/^\d*\.?\d+$/.test(montoBs))) {
+                alert('Los montos deben ser números positivos.');
+                return;
+            }
+
+            if (montoTotalUsdValor <= 0) {
+                alert('El monto total en USD debe ser mayor a cero.');
+                return;
+            }
+
+            if (montoUsdValor <= 0 && montoBsValor <= 0) {
+                alert('Debes registrar un pago en dólares, bolívares o ambos.');
+                return;
+            }
+
+            if (montoBsValor > 0 && tasaBsActual <= 0) {
+                alert('La tasa bs no está configurada. Debes actualizarla en la base de datos.');
+                return;
+            }
+
+            const montoCubiertoUsd = montoUsdValor + (montoBsValor > 0 && tasaBsActual > 0 ? (montoBsValor / tasaBsActual) : 0);
+            const totalRedondeado = Number(montoTotalUsdValor.toFixed(2));
+            const cubiertoRedondeado = Number(montoCubiertoUsd.toFixed(2));
+
+            if (cubiertoRedondeado !== totalRedondeado) {
+                alert(`La suma de pagos no coincide con el total. Total USD: ${totalRedondeado.toFixed(2)} | Cubierto USD: ${cubiertoRedondeado.toFixed(2)}.`);
                 return;
             }
 
@@ -102,11 +271,13 @@ import Layout from '../../layouts/Layout.astro';
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ fecha, descripcion, monto, empleadoId, servicioId }),
+                body: JSON.stringify({ montoTotalUsd: montoTotalUsdValor, fecha, montoUsd: montoUsdValor, montoBs: montoBsValor, empleadoId, servicioId }),
             })
             .then((response) => {
                 if (!response.ok) {
-                    throw new Error('Algo está mal con tu FETCH', response.status );
+                    return response.json().then((data) => {
+                        throw new Error(data.error || 'Algo está mal con tu FETCH');
+                    });
                 } 
                 return response.json();
             })
@@ -115,9 +286,38 @@ import Layout from '../../layouts/Layout.astro';
                 formulario.reset();
                 window.location.href = '/ventas';
             })
+            .catch((error) => {
+                console.error('Error agregando venta:', error);
+                alert(error.message || 'No se pudo agregar la venta.');
+            });
         });
             
 
     </script>
+
+    <style>
+        .mensaje-tasa {
+            display: block;
+            width: 300px;
+            margin: 0.35rem auto 0;
+            color: #C62828;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+
+        .detalle-monto {
+            display: block;
+            width: 300px;
+            margin: 0.35rem auto 0;
+            color: #4D4D4D;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+
+        #tasa-bs,
+        #monto-bs {
+            color: #6b6b6b;
+        }
+    </style>
 
 </Layout>

@@ -1,0 +1,108 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+    <main class="container-general">
+        <h1>TASA BS</h1>
+
+        <form id="formularioTasa">
+            <label for="tasaBs">Tasa actual BS</label>
+            <input type="text" id="tasaBs" name="tasaBs" placeholder="Ingresa la tasa BS" />
+            <p id="detalleTasa" class="detalle-tasa"></p>
+            <button type="submit" style="margin-top: 40px;">Guardar</button>
+        </form>
+    </main>
+
+    <script type="module">
+        const formulario = document.getElementById('formularioTasa');
+        const tasaInput = document.getElementById('tasaBs');
+        const detalleTasa = document.getElementById('detalleTasa');
+
+        const cargarTasa = async () => {
+            try {
+                const response = await fetch('/api/tasas');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'No se pudo cargar la tasa.');
+                }
+
+                const tasa = Number(data.tasa?.value ?? 0);
+                tasaInput.value = tasa > 0 ? tasa.toFixed(2) : '';
+                detalleTasa.textContent = tasa > 0
+                    ? `La tasa actual configurada es ${tasa.toFixed(2)} BS por USD.`
+                    : 'No hay una tasa BS configurada todavia.';
+            } catch (error) {
+                console.error('Error cargando tasa:', error);
+                detalleTasa.textContent = 'No se pudo cargar la tasa actual.';
+                detalleTasa.style.color = '#C62828';
+            }
+        };
+
+        formulario.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const value = tasaInput.value.trim();
+
+            if (!/^\d*\.?\d+$/.test(value) || Number(value) <= 0) {
+                alert('La tasa debe ser un numero mayor a cero.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/tasas', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ value: Number(value) })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.error || 'No se pudo actualizar la tasa.');
+                    return;
+                }
+
+                alert(data.message || 'Tasa actualizada exitosamente.');
+                await cargarTasa();
+            } catch (error) {
+                console.error('Error guardando tasa:', error);
+                alert('Ocurrio un error al guardar la tasa.');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', cargarTasa);
+    </script>
+
+    <style>
+        #formularioTasa {
+            margin: 0 auto;
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .detalle-tasa {
+            width: 300px;
+            margin: 0.5rem auto 0;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #4D4D4D;
+        }
+
+        @media (max-width: 768px) {
+            #formularioTasa {
+                width: 100%;
+            }
+
+            .detalle-tasa {
+                width: 100%;
+            }
+        }
+    </style>
+</Layout>

@@ -109,10 +109,13 @@ import Layout from '../../layouts/Layout.astro';
                     const fechaObjeto = new Date(sesion.fecha + "T00:00:00");
                     const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
                     const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
+                    const textoNumeroSesion = Number(sesion.numero_sesion) > 0
+                        ? sesion.numero_sesion
+                        : 'ABONO (SIN SESION)';
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                                    <td>${sesion.numero_sesion}</td>
+                                    <td>${textoNumeroSesion}</td>
                                     <td>${fechaFormateada}</td>
                                     <td>${sesion.abono_pago} USD</td>
                                 `;
@@ -155,12 +158,13 @@ import Layout from '../../layouts/Layout.astro';
                     mensajeSesiones.classList.add("mensaje");
 
                 } else if(dataValidacion.sesiones === 0){
-
                     const botonAgregarSesion = document.getElementById("botonAgregarSesion");
-                    botonAgregarSesion.style.visibility = "hidden";
+                    if (Number(dataValidacion.monto) <= 0) {
+                        botonAgregarSesion.style.visibility = "hidden";
+                    }
 
-                    mensajeSesiones.textContent = `No se pueden agregar más sesiones`;
-                    mensajeSesiones.style.color = "red";
+                    mensajeSesiones.textContent = `No quedan sesiones por realizar.`;
+                    mensajeSesiones.style.color = "#4D4D4D";
                     mensajeSesiones.classList.add("mensaje");
                 }
 

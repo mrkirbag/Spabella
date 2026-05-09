@@ -3,23 +3,19 @@ import { createClient } from "@libsql/client";
 export async function POST({ request }) {
     try {
 
-        const { fecha, numeroSesion, abonoPago, idPaquete } = await request.json();
+        const { fecha, abonoPago, idPaquete, esAbonoSinSesion } = await request.json();
 
         const db = createClient({   url: import.meta.env.DATABASE_URL,
                                     authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
                                 });
 
         // validar que no esten vacios
-        if (!fecha || numeroSesion === undefined || abonoPago === undefined || !idPaquete) {
+        if (!fecha || abonoPago === undefined || !idPaquete) {
             return new Response(JSON.stringify({ error: "Los campos no pueden estar vacios." }), { status: 400 });
         }
 
-        const numeroSesionValor = Number(numeroSesion);
         const abonoPagoValor = Number(abonoPago);
-
-        if (!Number.isInteger(numeroSesionValor) || numeroSesionValor <= 0) {
-            return new Response(JSON.stringify({ error: "El numero de sesion debe ser un entero mayor a cero." }), { status: 400 });
-        }
+        const soloAbono = Boolean(esAbonoSinSesion);
 
         if (!Number.isFinite(abonoPagoValor) || abonoPagoValor < 0) {
             return new Response(JSON.stringify({ error: "El abono debe ser un numero mayor o igual a cero." }), { status: 400 });
@@ -38,12 +34,13 @@ export async function POST({ request }) {
         const montoTotalPaquete = Number(paquete.rows[0].monto_total ?? 0);
 
         const sesionesRegistradas = await db.execute(
-            "SELECT COUNT(*) AS total_sesiones FROM sesiones WHERE paquete_id = ?",
+            "SELECT COUNT(*) AS total_sesiones FROM sesiones WHERE paquete_id = ? AND numero_sesion > 0",
             [idPaquete]
         );
         const totalSesionesRegistradas = Number(sesionesRegistradas.rows[0]?.total_sesiones ?? 0);
+        const numeroSesionAutomatico = soloAbono ? 0 : totalSesionesRegistradas + 1;
 
-        if (totalSesionesRegistradas >= numeroSesionesPaquete) {
+        if (!soloAbono && numeroSesionAutomatico > numeroSesionesPaquete) {
             return new Response(JSON.stringify({ error: "No se pueden agregar mas sesiones para este paquete." }), { status: 400 });
         }
 
@@ -63,10 +60,16 @@ export async function POST({ request }) {
 
         await db.execute(
             "INSERT INTO sesiones (fecha, numero_sesion, abono_pago, paquete_id) VALUES (?, ?, ?, ?)",
-            [fecha, numeroSesionValor, abonoPagoValor, idPaquete]
+            [fecha, numeroSesionAutomatico, abonoPagoValor, idPaquete]
         );
 
-        return new Response(JSON.stringify({ message: "Sesión agregada exitosamente" }), { status: 200 });
+        return new Response(
+            JSON.stringify({
+                message: soloAbono ? "Abono agregado exitosamente" : "Sesion agregada exitosamente",
+                numeroSesion: numeroSesionAutomatico
+            }),
+            { status: 200 }
+        );
     
     } catch (error) {
         console.error("Error agregando paquete:", error);

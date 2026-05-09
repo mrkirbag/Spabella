@@ -33,6 +33,8 @@ import Layout from '../layouts/Layout.astro';
 
     <script type="module">
 
+        const formatearMonto = (monto) => Number(monto || 0).toFixed(2);
+
         document.getElementById("buscarFacturacion").addEventListener("click", async () => {
 
             const fechaDesde = document.getElementById("fechaDesde").value;
@@ -55,16 +57,33 @@ import Layout from '../layouts/Layout.astro';
                 // Crear tabla y mostrar encabezado
 
                 const tabla = document.createElement("table");
+                tabla.classList.add("tabla-facturacion");
                 tabla.innerHTML = `
                     <thead>
-                        <tr>
-                            <th colspan="6">${empleada.nombre.toUpperCase()} | Total Empleado: ${empleada.totalEmpleado.toFixed(2)}$ | Total Spa: ${empleada.totalSpa.toFixed(2)}$</th>
+                        <tr class="fila-resumen">
+                            <th colspan="6" class="encabezado-resumen">
+                                <div class="resumen-wrap">
+                                    <span class="resumen-nombre">${empleada.nombre.toUpperCase()}</span>
+                                    <div class="resumen-grupo resumen-empleada">
+                                        <span class="resumen-titulo">EMPLEADA</span>
+                                        <span class="resumen-chip resumen-chip-usd">USD ${formatearMonto(empleada.totalEmpleadoUsd)}</span>
+                                        <span class="resumen-separador">-</span>
+                                        <span class="resumen-chip resumen-chip-bs">BS ${formatearMonto(empleada.totalEmpleadoBs)}</span>
+                                    </div>
+                                    <div class="resumen-grupo resumen-spa">
+                                        <span class="resumen-titulo">SPA</span>
+                                        <span class="resumen-chip resumen-chip-usd">USD ${formatearMonto(empleada.totalSpaUsd)}</span>
+                                        <span class="resumen-separador">-</span>
+                                        <span class="resumen-chip resumen-chip-bs">BS ${formatearMonto(empleada.totalSpaBs)}</span>
+                                    </div>
+                                </div>
+                            </th>
                         </tr>
-                        <tr>
+                        <tr class="fila-columnas">
                             <th>Fecha</th>
                             <th>Servicio</th>
-                            <th>Descripción</th>
-                            <th>Total</th>
+                            <th>Total USD</th>
+                            <th>Pago Cliente</th>
                             <th>Empleado</th>
                             <th>Spa</th>
                         </tr>
@@ -86,12 +105,43 @@ import Layout from '../layouts/Layout.astro';
 
                     const fila = document.createElement("tr");
                     fila.innerHTML = `
-                        <td>${fechaFormateada}</td>
-                        <td>${servicio.servicio.toUpperCase()}</td>
-                        <td>${servicio.descripcion}</td>
-                        <td>${servicio.montoTotal}$</td>
-                        <td>${servicio.montoEmpleado}$</td>
-                        <td>${servicio.montoSpa}$</td>
+                        <td class="col-fecha">${fechaFormateada}</td>
+                        <td class="col-servicio">
+                            <span class="servicio-nombre">${servicio.servicio.toUpperCase()}</span><br>
+                            <span class="servicio-porcentajes">EMPLEADA ${formatearMonto(servicio.porcentajeEmpleado)}% - SPA ${formatearMonto(servicio.porcentajeSpa)}%</span><br>
+                            <span class="servicio-descripcion">${servicio.descripcion}</span>
+                        </td>
+                        <td class="col-monto">${formatearMonto(servicio.montoTotalUsd)} USD</td>
+                        <td class="col-monto col-cliente">
+                            <div class="moneda-linea moneda-usd">
+                                <span class="moneda-tag">USD</span>
+                                <span class="moneda-valor">${formatearMonto(servicio.pagoClienteUsd)}</span>
+                            </div>
+                            <div class="moneda-linea moneda-bs">
+                                <span class="moneda-tag">BS</span>
+                                <span class="moneda-valor">${formatearMonto(servicio.pagoClienteBs)}</span>
+                            </div>
+                        </td>
+                        <td class="col-monto col-empleada">
+                            <div class="moneda-linea moneda-usd">
+                                <span class="moneda-tag">USD</span>
+                                <span class="moneda-valor">${formatearMonto(servicio.montoEmpleadoUsd)}</span>
+                            </div>
+                            <div class="moneda-linea moneda-bs">
+                                <span class="moneda-tag">BS</span>
+                                <span class="moneda-valor">${formatearMonto(servicio.montoEmpleadoBs)}</span>
+                            </div>
+                        </td>
+                        <td class="col-monto col-spa">
+                            <div class="moneda-linea moneda-usd">
+                                <span class="moneda-tag">USD</span>
+                                <span class="moneda-valor">${formatearMonto(servicio.montoSpaUsd)}</span>
+                            </div>
+                            <div class="moneda-linea moneda-bs">
+                                <span class="moneda-tag">BS</span>
+                                <span class="moneda-valor">${formatearMonto(servicio.montoSpaBs)}</span>
+                            </div>
+                        </td>
                     `;
                     tbody.appendChild(fila);
                 });
@@ -157,10 +207,275 @@ import Layout from '../layouts/Layout.astro';
 
     <style>
 
+        .lista-facturacion {
+            width: 100%;
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tabla-facturacion {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.78);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
+        }
+
+        .tabla-facturacion th,
+        .tabla-facturacion td {
+            padding: 0.7rem 0.85rem;
+            border-bottom: 1px solid #ece8e2;
+            font-size: 0.88rem;
+            vertical-align: top;
+        }
+
+        .tabla-facturacion thead .encabezado-resumen {
+            background: linear-gradient(135deg, #4D4D4D 0%, #686868 100%);
+            color: #ffffff;
+            letter-spacing: 0.015em;
+            text-align: left;
+            font-weight: 700;
+            font-size: 0.84rem;
+            text-transform: uppercase;
+        }
+
+        .tabla-facturacion .resumen-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .tabla-facturacion .resumen-nombre {
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            margin-right: 0.25rem;
+        }
+
+        .tabla-facturacion .resumen-grupo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.36rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .tabla-facturacion .resumen-titulo {
+            font-size: 0.66rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            opacity: 0.95;
+            margin-right: 0.15rem;
+        }
+
+        .tabla-facturacion .resumen-chip {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.12rem 0.42rem;
+            font-size: 0.69rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .tabla-facturacion .resumen-separador {
+            font-size: 0.76rem;
+            font-weight: 700;
+            opacity: 0.9;
+            margin: 0 0.05rem;
+        }
+
+        .tabla-facturacion .resumen-chip-usd {
+            background: rgba(31, 95, 57, 0.26);
+            color: #dff9ea;
+        }
+
+        .tabla-facturacion .resumen-chip-bs {
+            background: rgba(63, 79, 143, 0.28);
+            color: #e2e8ff;
+        }
+
+        .tabla-facturacion thead .fila-columnas th {
+            background: #f6efe3;
+            color: #3a3a3a;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.035em;
+        }
+
+        .tabla-facturacion tbody tr:nth-child(even) {
+            background: rgba(247, 241, 232, 0.35);
+        }
+
+        .tabla-facturacion tbody tr:hover {
+            background: rgba(221, 181, 127, 0.13);
+        }
+
+        .tabla-facturacion .col-fecha,
+        .tabla-facturacion .col-servicio {
+            font-weight: 600;
+            color: #4D4D4D;
+            white-space: nowrap;
+        }
+
+        .tabla-facturacion .col-fecha {
+            font-weight: 600;
+            color: #4D4D4D;
+            white-space: nowrap;
+        }
+
+        .tabla-facturacion .col-servicio {
+            max-width: 300px;
+            white-space: normal;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.22rem;
+        }
+
+        .tabla-facturacion .servicio-nombre {
+            display: block;
+            line-height: 1.25;
+        }
+
+        .tabla-facturacion .servicio-porcentajes {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #7a5a00;
+            background: rgba(255, 213, 79, 0.32);
+            border: 1px solid rgba(255, 193, 7, 0.45);
+            border-radius: 999px;
+            padding: 0.11rem 0.42rem;
+            letter-spacing: 0.03em;
+        }
+
+        .tabla-facturacion .servicio-descripcion {
+            display: block;
+            line-height: 1.3;
+            font-size: 0.75rem;
+            color: #5a5a5a;
+        }
+
+        .tabla-facturacion .col-monto {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .tabla-facturacion .moneda-linea {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.45rem;
+            border-radius: 999px;
+            padding: 0.14rem 0.42rem;
+            margin-bottom: 0.26rem;
+            line-height: 1.15;
+        }
+
+        .tabla-facturacion .moneda-linea:last-child {
+            margin-bottom: 0;
+        }
+
+        .tabla-facturacion .moneda-tag {
+            display: inline-block;
+            min-width: 34px;
+            text-align: center;
+            border-radius: 999px;
+            padding: 0.1rem 0.35rem;
+            font-size: 0.66rem;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .tabla-facturacion .moneda-valor {
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .tabla-facturacion .moneda-usd {
+            background: rgba(31, 95, 57, 0.11);
+        }
+
+        .tabla-facturacion .moneda-usd .moneda-tag {
+            background: #1f5f39;
+        }
+
+        .tabla-facturacion .moneda-bs {
+            background: rgba(63, 79, 143, 0.11);
+        }
+
+        .tabla-facturacion .moneda-bs .moneda-tag {
+            background: #3f4f8f;
+        }
+
+        .tabla-facturacion .col-empleada {
+            color: #1f5f39;
+        }
+
+        .tabla-facturacion .col-spa {
+            color: #3f4f8f;
+        }
+
+        .tabla-facturacion .col-cliente {
+            color: #444444;
+        }
+
+        .facturacion-imprimir h2 {
+            margin-bottom: 1rem;
+        }
+
         /* CSS de impresion */
         @media print {
             button { 
                 display: none !important; 
+            }
+
+            .tabla-facturacion {
+                box-shadow: none;
+                border: 1px solid #000;
+                border-radius: 0;
+                background: #fff;
+            }
+
+            .tabla-facturacion thead .encabezado-resumen,
+            .tabla-facturacion thead .fila-columnas th {
+                color: #000 !important;
+                background: #ddd !important;
+            }
+
+            .tabla-facturacion tbody tr:nth-child(even),
+            .tabla-facturacion tbody tr:hover {
+                background: #fff !important;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .tabla-facturacion {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .tabla-facturacion .col-servicio {
+                min-width: 220px;
+            }
+
+            .tabla-facturacion .col-servicio,
+            .tabla-facturacion .col-monto {
+                min-width: 125px;
+            }
+
+            .tabla-facturacion .resumen-wrap {
+                align-items: flex-start;
+                gap: 0.5rem;
             }
         }
 

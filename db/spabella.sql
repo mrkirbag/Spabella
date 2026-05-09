@@ -15,9 +15,16 @@ CREATE TABLE IF NOT EXISTS ventas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha TEXT NOT NULL,
     descripcion TEXT NOT NULL,
-    monto INTEGER NOT NULL,
+    monto REAL NOT NULL,
+    monto_usd REAL NOT NULL DEFAULT 0,
+    monto_bs REAL NOT NULL DEFAULT 0,
     empleado_id INTEGER NOT NULL,
     servicio_id INTEGER NOT NULL,
     FOREIGN KEY (empleado_id) REFERENCES empleados(id),
     FOREIGN KEY (servicio_id) REFERENCES servicios(id)
+);
+CREATE TABLE IF NOT EXISTS tasas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL UNIQUE,
+    value REAL NOT NULL DEFAULT 0
 );
