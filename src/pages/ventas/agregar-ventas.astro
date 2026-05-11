@@ -18,6 +18,9 @@ import Layout from '../../layouts/Layout.astro';
             <label for="fecha">Fecha</label>
             <input type="date" name="fecha" id="fecha" value={fechaCompleta}/>
             <br />
+            <label for="descripcion">Descripción</label>
+            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción de la venta" />
+            <br />
             <label for="servicio-id">Servicio</label>
             <select name="servicio-id" id="servicio-id">
                 <option value="">Selecciona un Servicio</option>
@@ -84,7 +87,7 @@ import Layout from '../../layouts/Layout.astro';
                 data.serviciosEnvios.forEach(servicio => {
                     const option = document.createElement("option");
                     option.value = servicio.id;
-                    option.textContent = `${servicio.nombre.toUpperCase()}`;
+                    option.textContent = `${servicio.nombre.toUpperCase()} | SPABELLA: ${servicio.porcentaje_spabella}% | EMPLEADO: ${servicio.porcentaje_empleado}%`;
                     servicioSelect.appendChild(option);
                 });
 
@@ -220,6 +223,7 @@ import Layout from '../../layouts/Layout.astro';
             event.preventDefault();
 
             const fecha = document.getElementById('fecha').value;
+            const descripcion = document.getElementById('descripcion').value.trim();
             const montoTotalUsd = montoTotalUsdInput.value.trim();
             const montoUsd = montoUsdInput.value.trim();
             const montoBs = montoBsInput.value.trim();
@@ -271,7 +275,7 @@ import Layout from '../../layouts/Layout.astro';
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ montoTotalUsd: montoTotalUsdValor, fecha, montoUsd: montoUsdValor, montoBs: montoBsValor, empleadoId, servicioId }),
+                body: JSON.stringify({ montoTotalUsd: montoTotalUsdValor, fecha, descripcion, montoUsd: montoUsdValor, montoBs: montoBsValor, empleadoId, servicioId }),
             })
             .then((response) => {
                 if (!response.ok) {
