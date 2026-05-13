@@ -5,17 +5,16 @@ import Layout from '../../layouts/Layout.astro';
 <Layout>
 
     <main class="container-general">
-        <h1>AGREGAR SERVICIO</h1>
+        <h1>AGREGAR PORCENTAJE</h1>
 
         <form action="/agregar-servicios" id="formulario">
-            <label for="descripcion">Descripción del servicio</label>
-            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
-            <br />
-            <label for="porcentaje-spa">Porcentaje para Spa</label>
-            <input type="text" name="porcentaje-spa" id="porcentaje-spa" placeholder="Porcentaje de SPA" />
-            <br />
-            <label for="porcentaje-empleado">Porcentaje para empleado</label>
-            <input type="text" name="porcentaje-empleado" id="porcentaje-empleado" placeholder="Porcentaje de Empleado" />
+            <label for="porcentajeSpa">Porcentaje SPA</label>
+            <input type="number" name="porcentajeSpa" id="porcentajeSpa" min="0" max="100" step="1" placeholder="Ej: 50" />
+
+            <label for="porcentajeEmpleado">Porcentaje empleada</label>
+            <input type="number" name="porcentajeEmpleado" id="porcentajeEmpleado" min="0" max="100" step="1" placeholder="Ej: 50" />
+
+            <small id="detalleReparto" class="detalle-reparto"></small>
             <button type="submit" style="margin-top: 40px;">Agregar</button>
         </form>
     </main>
@@ -23,43 +22,50 @@ import Layout from '../../layouts/Layout.astro';
     <script type="module">
 
         const formulario = document.getElementById('formulario');
+        const porcentajeSpaInput = document.getElementById('porcentajeSpa');
+        const porcentajeEmpleadoInput = document.getElementById('porcentajeEmpleado');
+        const detalleReparto = document.getElementById('detalleReparto');
+
+        const actualizarDetalle = () => {
+            const porcentajeSpa = Number(porcentajeSpaInput.value || 0);
+            const porcentajeEmpleado = Number(porcentajeEmpleadoInput.value || 0);
+
+            if (!porcentajeSpaInput.value && !porcentajeEmpleadoInput.value) {
+                detalleReparto.textContent = '';
+                return;
+            }
+
+            detalleReparto.textContent = `Se guardara SPA ${porcentajeSpa}% / EMPLEADA ${porcentajeEmpleado}%`;
+        };
+
+        porcentajeSpaInput.addEventListener('input', actualizarDetalle);
+        porcentajeEmpleadoInput.addEventListener('input', actualizarDetalle);
 
         formulario.addEventListener('submit', (event) => {  
 
             event.preventDefault();
 
-            const descripcion = document.getElementById('descripcion').value;
-            const porcentajeSpa = document.getElementById('porcentaje-spa').value;
-            const porcentajeEmpleado = document.getElementById('porcentaje-empleado').value;
+            const porcentajeSpa = Number(porcentajeSpaInput.value);
+            const porcentajeEmpleado = Number(porcentajeEmpleadoInput.value);
 
-            let sumaPorcentaje = Number(porcentajeSpa) + Number(porcentajeEmpleado);
-            console.log(sumaPorcentaje);
-
-            // Validar campos
-            if (descripcion === '' || porcentajeSpa === '' || porcentajeEmpleado === '') {
-                alert('Por favor, rellena todos los campos.');
-                formulario.reset();
-                return;
-            }
-            if (!/^\d*\.?\d+$/.test(porcentajeSpa) || !/^\d*\.?\d+$/.test(porcentajeEmpleado)) {
-                alert('El porcentaje debe ser un número positivo.');
-                formulario.reset();
-                return;
-            }
-            if(sumaPorcentaje !== 100) {
-                alert('La suma del porcentaje de SPA y Empleado deben ser iguales a 100%.');
-                formulario.reset();
+            if (!Number.isFinite(porcentajeSpa) || !Number.isFinite(porcentajeEmpleado)) {
+                alert('Ingresa ambos porcentajes para continuar.');
                 return;
             }
 
-            // Enviar datos al servidor
+            const totalPorcentajes = Number((porcentajeSpa + porcentajeEmpleado).toFixed(2));
+            if (totalPorcentajes !== 100) {
+                alert('El reparto seleccionado no suma 100%.');
+                return;
+            }
+
             const url = "/api/servicios";
             fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ descripcion, porcentajeSpa, porcentajeEmpleado }),
+                body: JSON.stringify({ porcentajeSpa, porcentajeEmpleado }),
             })
             .then((response) => {
                 if (!response.ok) {
@@ -70,10 +76,26 @@ import Layout from '../../layouts/Layout.astro';
             .then((data) => {
                 console.log(data);
                 formulario.reset();
+                detalleReparto.textContent = '';
                 window.location.href = '/servicios';
             })
+            .catch((error) => {
+                console.error('Error agregando reparto:', error);
+                alert(error.message || 'No se pudo guardar el reparto.');
+            });
         });
 
     </script>
+
+    <style>
+        .detalle-reparto {
+            display: block;
+            width: min(100%, 360px);
+            margin: 0.35rem auto 0;
+            color: #4D4D4D;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+    </style>
 
 </Layout>

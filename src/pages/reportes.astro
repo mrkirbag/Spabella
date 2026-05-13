@@ -81,7 +81,7 @@ import Layout from '../layouts/Layout.astro';
                         </tr>
                         <tr class="fila-columnas">
                             <th>Fecha</th>
-                            <th>Servicio</th>
+                            <th>Reparto</th>
                             <th>Total USD</th>
                             <th>Pago Cliente</th>
                             <th>Empleado</th>
@@ -107,8 +107,7 @@ import Layout from '../layouts/Layout.astro';
                     fila.innerHTML = `
                         <td class="col-fecha">${fechaFormateada}</td>
                         <td class="col-servicio">
-                            <span class="servicio-nombre">${servicio.servicio.toUpperCase()}</span><br>
-                            <span class="servicio-porcentajes">EMPLEADA ${formatearMonto(servicio.porcentajeEmpleado)}% - SPA ${formatearMonto(servicio.porcentajeSpa)}%</span><br>
+                            <span class="servicio-nombre">SPA ${formatearMonto(servicio.porcentajeSpa)}% / EMPLEADA ${formatearMonto(servicio.porcentajeEmpleado)}%</span><br>
                             <span class="servicio-descripcion">${servicio.descripcion}</span>
                         </td>
                         <td class="col-monto">${formatearMonto(servicio.montoTotalUsd)} USD</td>

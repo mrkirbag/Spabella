@@ -21,9 +21,9 @@ import Layout from '../../layouts/Layout.astro';
             <label for="descripcion">Descripción</label>
             <input type="text" name="descripcion" id="descripcion" placeholder="Descripción de la venta" />
             <br />
-            <label for="servicio-id">Servicio</label>
+            <label for="servicio-id">Reparto</label>
             <select name="servicio-id" id="servicio-id">
-                <option value="">Selecciona un Servicio</option>
+                <option value="">Selecciona un Reparto</option>
             </select>
             <br />
             <label for="empleado-id">Empleado</label>
@@ -87,7 +87,7 @@ import Layout from '../../layouts/Layout.astro';
                 data.serviciosEnvios.forEach(servicio => {
                     const option = document.createElement("option");
                     option.value = servicio.id;
-                    option.textContent = `${servicio.nombre.toUpperCase()} | SPABELLA: ${servicio.porcentaje_spabella}% | EMPLEADO: ${servicio.porcentaje_empleado}%`;
+                    option.textContent = `SPA ${servicio.porcentaje_spabella}% / EMPLEADA ${servicio.porcentaje_empleado}%`;
                     servicioSelect.appendChild(option);
                 });
 

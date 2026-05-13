@@ -53,7 +53,8 @@ export async function GET({ request }) {
                                         SELECT
                                             v.id,
                                             v.fecha,
-                                            s.nombre AS servicio,
+                                            s.porcentaje_spabella,
+                                            s.porcentaje_empleado,
                                             v.descripcion,
                                             e.nombre AS empleado,
                                             v.monto,

@@ -5,11 +5,11 @@ import Layout from '../layouts/Layout.astro';
 <Layout>
 
     <main class="container-general">
-        <h1>LISTA DE SERVICIOS</h1>  
+        <h1>LISTA DE PORCENTAJES</h1>  
         <table id="lista-servicios"></table>
         
         <div class="container-boton_agregar">
-            <a href="/servicios/agregar-servicios" class="boton-agregar">Agregar Servicio</a>
+            <a href="/servicios/agregar-servicios" class="boton-agregar">Agregar Porcentajes</a>
         </div>
     </main>
 
@@ -39,9 +39,8 @@ import Layout from '../layouts/Layout.astro';
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th>Servicio</th>
-                        <th>% Spa</th>
-                        <th>% Empleado</th>
+                        <th>Porcentaje SPA</th>
+                        <th>Porcentaje empleada</th>
                         <th>Acciones</th>
                     </tr>
                 `;
@@ -53,7 +52,6 @@ import Layout from '../layouts/Layout.astro';
                 servicios.forEach(servicio => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${servicio.nombre.toUpperCase()}</td>
                         <td>${servicio.porcentaje_spabella}%</td>
                         <td>${servicio.porcentaje_empleado}%</td>
                         <td><button type="button" class="boton-eliminar">Eliminar</button></td>

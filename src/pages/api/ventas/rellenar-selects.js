@@ -17,11 +17,23 @@ export async function GET() {
     await db.execute("INSERT OR IGNORE INTO tasas (nombre, value) VALUES ('bs', 0)");
 
     const empleados = await db.execute("SELECT id, nombre, cargo FROM empleados WHERE estado = 'activo'");
-    const servicios = await db.execute("SELECT id, nombre, porcentaje_spabella, porcentaje_empleado FROM servicios WHERE estado = 'activo'");
+    const servicios = await db.execute(`
+        SELECT
+            MIN(id) AS id,
+            porcentaje_spabella,
+            porcentaje_empleado
+        FROM servicios
+        WHERE estado = 'activo'
+        GROUP BY porcentaje_spabella, porcentaje_empleado
+        ORDER BY porcentaje_spabella DESC, porcentaje_empleado ASC
+    `);
     const tasaBsResponse = await db.execute("SELECT value FROM tasas WHERE LOWER(nombre) = 'bs' LIMIT 1");
 
     let empleadosEnvios = empleados.rows;
-    let serviciosEnvios = servicios.rows;
+    let serviciosEnvios = (servicios.rows || []).map((servicio) => ({
+        ...servicio,
+        reparto: `SPA ${servicio.porcentaje_spabella}% / EMPLEADA ${servicio.porcentaje_empleado}%`
+    }));
     const tasaBs = Number(tasaBsResponse.rows?.[0]?.value ?? 0);
 
     return new Response(JSON.stringify({empleadosEnvios, serviciosEnvios, tasaBs}), {

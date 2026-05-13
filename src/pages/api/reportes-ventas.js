@@ -55,7 +55,7 @@ export async function GET({ request }) {
     const tasaBs = Number(tasaResponse.rows?.[0]?.value ?? 0);
 
     const datos = await db.execute(`
-        SELECT v.fecha, s.nombre AS servicio, s.porcentaje_empleado, s.porcentaje_spabella,
+        SELECT v.fecha, s.porcentaje_empleado, s.porcentaje_spabella,
         v.descripcion, e.nombre AS empleada, v.monto,
         COALESCE(v.monto_usd, v.monto) AS monto_usd,
         COALESCE(v.monto_bs, 0) AS monto_bs_usd
@@ -78,6 +78,7 @@ export async function GET({ request }) {
     datos.rows.forEach(venta => {
         const porcentajeEmpleado = Number(venta.porcentaje_empleado ?? 0);
         const porcentajeSpa = Number(venta.porcentaje_spabella ?? 0);
+        const servicioLabel = `SPA ${porcentajeSpa}% / EMPLEADA ${porcentajeEmpleado}%`;
 
         const montoTotalUsd = Number(venta.monto ?? 0);
         const montoTotalBs = tasaBs > 0 ? (montoTotalUsd * tasaBs) : 0;
@@ -111,7 +112,7 @@ export async function GET({ request }) {
         
         facturacion[venta.empleada].servicios.push({
             fecha: venta.fecha,
-            servicio: venta.servicio,
+            servicio: servicioLabel,
             descripcion: venta.descripcion,
             porcentajeEmpleado,
             porcentajeSpa,
