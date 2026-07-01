@@ -27,16 +27,124 @@ import Layout from '../layouts/Layout.astro';
 
         <ol id="listaPaquetes"></ol>
 
-        <div class="container-boton_agregar">
+        <div class="container-boton_agregar botones-acciones">
             <a href="/paquetesMariana/agregar-paquetes" class="boton-agregar">Agregar Paquete</a>
+            <a href="/clientes/agregar-clientes" class="boton-agregar">Agregar Nuevo Cliente</a>
+            <a href="#" id="btnListaClientes" class="boton-agregar">Lista de clientes</a>
         </div>
+
+        <section id="listaClientesSection" class="lista-clientes-section" hidden>
+            <table id="tablaListaClientes"></table>
+            <div id="paginacionClientes" class="paginacion-clientes"></div>
+        </section>
     </main>
 
     <script type="module">
 
         const buscarClienteInput = document.getElementById("buscar-cliente");
         const clienteSelect = document.getElementById("cliente");
+        const btnListaClientes = document.getElementById("btnListaClientes");
+        const listaClientesSection = document.getElementById("listaClientesSection");
+        const tablaListaClientes = document.getElementById("tablaListaClientes");
+        const paginacionClientes = document.getElementById("paginacionClientes");
         let clientesCache = [];
+        let listaClientesVisible = false;
+        let paginaActualClientes = 1;
+        const CLIENTES_POR_PAGINA = 20;
+
+        const construirTelefonoWhatsapp = (celular) => {
+            const celularLimpio = String(celular || '').replace(/\D/g, '');
+            let numeroWhatsapp = celularLimpio;
+
+            if (numeroWhatsapp.startsWith('0')) {
+                numeroWhatsapp = numeroWhatsapp.slice(1);
+            }
+
+            if (numeroWhatsapp.length === 9) {
+                numeroWhatsapp = `58${numeroWhatsapp}`;
+            }
+
+            return { celularLimpio, numeroWhatsapp };
+        };
+
+        const renderListaClientes = () => {
+            const clientesOrdenados = [...clientesCache].sort((a, b) =>
+                String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' })
+            );
+
+            const totalPaginas = Math.max(1, Math.ceil(clientesOrdenados.length / CLIENTES_POR_PAGINA));
+
+            if (paginaActualClientes > totalPaginas) {
+                paginaActualClientes = totalPaginas;
+            }
+
+            const inicio = (paginaActualClientes - 1) * CLIENTES_POR_PAGINA;
+            const clientesPagina = clientesOrdenados.slice(inicio, inicio + CLIENTES_POR_PAGINA);
+
+            tablaListaClientes.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+
+            const tbody = tablaListaClientes.querySelector('tbody');
+
+            clientesPagina.forEach((cliente) => {
+                const { celularLimpio, numeroWhatsapp } = construirTelefonoWhatsapp(cliente.celular);
+                const mensajeWhatsapp = encodeURIComponent(
+                    `Hola ${String(cliente.nombre || '').toUpperCase()}, te escribimos de Spabella.`
+                );
+                const linkWhatsapp = numeroWhatsapp
+                    ? `https://wa.me/${numeroWhatsapp}?text=${mensajeWhatsapp}`
+                    : '#';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${String(cliente.nombre || '').toUpperCase()}</td>
+                    <td>
+                        <a href="${linkWhatsapp}" target="_blank" rel="noopener noreferrer" class="link-whatsapp">
+                            <span class="link-whatsapp__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4 5.5C4 4.67157 4.67157 4 5.5 4H18.5C19.3284 4 20 4.67157 20 5.5V14.5C20 15.3284 19.3284 16 18.5 16H9.5L5.2 19.3C4.53956 19.8063 3.6 19.3353 3.6 18.5V16.5C3.6 16.2239 3.82386 16 4.1 16H5.5C4.67157 16 4 15.3284 4 14.5V5.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                                    <path d="M8 8.5H16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                    <path d="M8 11.5H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                            <span>${celularLimpio ? `0${celularLimpio}` : 'Sin teléfono'}</span>
+                        </a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            paginacionClientes.innerHTML = `
+                <button type="button" class="paginacion-btn" id="btnPaginaAnterior" ${paginaActualClientes <= 1 ? 'disabled' : ''}>
+                    Anterior
+                </button>
+                <span class="paginacion-info">Página ${paginaActualClientes} de ${totalPaginas}</span>
+                <button type="button" class="paginacion-btn" id="btnPaginaSiguiente" ${paginaActualClientes >= totalPaginas ? 'disabled' : ''}>
+                    Siguiente
+                </button>
+            `;
+
+            document.getElementById('btnPaginaAnterior')?.addEventListener('click', () => {
+                if (paginaActualClientes > 1) {
+                    paginaActualClientes -= 1;
+                    renderListaClientes();
+                }
+            });
+
+            document.getElementById('btnPaginaSiguiente')?.addEventListener('click', () => {
+                if (paginaActualClientes < totalPaginas) {
+                    paginaActualClientes += 1;
+                    renderListaClientes();
+                }
+            });
+        };
 
         const renderClientes = (filtro = '') => {
             const termino = filtro.trim().toLowerCase();
@@ -69,6 +177,18 @@ import Layout from '../layouts/Layout.astro';
 
         clientesCache = data.clientesEnvios || [];
         renderClientes();
+
+        btnListaClientes.addEventListener('click', (event) => {
+            event.preventDefault();
+            listaClientesVisible = !listaClientesVisible;
+            listaClientesSection.hidden = !listaClientesVisible;
+
+            if (listaClientesVisible) {
+                paginaActualClientes = 1;
+                renderListaClientes();
+                listaClientesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
 
         buscarClienteInput.addEventListener('input', () => {
             renderClientes(buscarClienteInput.value);
@@ -218,6 +338,80 @@ import Layout from '../layouts/Layout.astro';
         #buscar-cliente {
             width: 300px;
             margin-bottom: 0.75rem;
+        }
+
+        .botones-acciones {
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .lista-clientes-section {
+            margin-top: 1.5rem;
+        }
+
+        .paginacion-clientes {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .paginacion-info {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #4D4D4D;
+        }
+
+        .paginacion-btn {
+            background: #DDB57F;
+            color: #4D4D4D;
+            border: none;
+            height: 36px;
+            width: auto;
+            min-width: 100px;
+            padding: 5px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 2px #00000029;
+            font-family: inherit;
+            font-weight: 600;
+        }
+
+        .paginacion-btn:hover:not(:disabled) {
+            opacity: 0.8;
+        }
+
+        .paginacion-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .link-whatsapp {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #4D4D4D;
+            font-weight: 700;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .link-whatsapp__icon {
+            display: inline-flex;
+            color: #DDB57F;
+        }
+
+        .link-whatsapp:hover {
+            color: #DDB57F;
+            border-color: #DDB57F;
+        }
+
+        .link-whatsapp:hover .link-whatsapp__icon {
+            color: #4D4D4D;
         }
 
     </style>
