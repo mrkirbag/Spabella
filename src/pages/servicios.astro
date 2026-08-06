@@ -6,7 +6,7 @@ import Layout from '../layouts/Layout.astro';
 
     <main class="container-general">
         <h1>LISTA DE PORCENTAJES</h1>  
-        <table id="lista-servicios"></table>
+        <table id="lista-servicios" class="sp-table"></table>
         
         <div class="container-boton_agregar">
             <a href="/servicios/agregar-servicios" class="boton-agregar">Agregar Porcentajes</a>
@@ -54,7 +54,7 @@ import Layout from '../layouts/Layout.astro';
                     tr.innerHTML = `
                         <td>${servicio.porcentaje_spabella}%</td>
                         <td>${servicio.porcentaje_empleado}%</td>
-                        <td><button type="button" class="boton-eliminar">Eliminar</button></td>
+                        <td class="sp-actions"><button type="button" class="boton-eliminar">Eliminar</button></td>
                     `;
 
                     const btnEliminar = tr.querySelector('.boton-eliminar');

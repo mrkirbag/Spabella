@@ -4,7 +4,10 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout>
         <main class="container-general">
-        <h1>AGENDA DE LOS PRÓXIMOS 5 DÍAS</h1>
+        <h1>AGENDA</h1>
+        <p style="text-align:center;color:#6f675c;font-weight:600;margin:-0.35rem auto 1rem;max-width:560px;">
+            Todas las citas. Las de <span style="color:#c48a2e;font-weight:800;">laser grande</span> se marcan claramente en la lista.
+        </p>
 
         <div class="modulo-busqueda">
             <div class="campo-busqueda">
@@ -14,7 +17,7 @@ import Layout from '../layouts/Layout.astro';
             <button type="button" id="verProximos">Ver próximos 5 días</button>
         </div>
 
-        <table id="listaReservas"></table>
+        <table id="listaReservas" class="sp-table"></table>
         
         <div class="container-boton_agregar">
             <a href="/reservas/agregar-reservas" class="boton-agregar">Agregar Cita</a>
@@ -79,9 +82,14 @@ import Layout from '../layouts/Layout.astro';
                         ? `https://wa.me/${numeroWhatsapp}?text=${mensajeWhatsapp}`
                         : '#';
 
+                    const esLaser = Number(reserva.laser_largo) === 1;
                     const tr = document.createElement('tr');
+                    if (esLaser) tr.classList.add('fila-laser-grande');
                     tr.innerHTML = `
-                        <td>${reserva.nombre.toUpperCase()}</td>
+                        <td>
+                            <strong>${reserva.nombre.toUpperCase()}</strong>
+                            ${esLaser ? `<span class="badge-laser-grande">Laser grande</span>` : ""}
+                        </td>
                         <td>
                             <a href="${linkWhatsapp}" target="_blank" rel="noopener noreferrer" class="link-whatsapp">
                                 <span class="link-whatsapp__icon" aria-hidden="true">
@@ -145,7 +153,9 @@ import Layout from '../layouts/Layout.astro';
 
             const cargarReservas = async (fecha = '') => {
                 try {
-                    const query = fecha ? `?fecha=${encodeURIComponent(fecha)}` : '';
+                    const query = fecha
+                        ? `?fecha=${encodeURIComponent(fecha)}&tipo=todas`
+                        : `?tipo=todas`;
                     const response = await fetch(`/api/reservas/vista-reservas${query}`);
                     const reservas = await response.json();
                     renderReservas(reservas);
@@ -207,6 +217,28 @@ import Layout from '../layouts/Layout.astro';
 
         .acciones-reserva button {
             margin: 0;
+        }
+
+        .fila-laser-grande {
+            background: #fff8ee !important;
+            box-shadow: inset 4px 0 0 #c48a2e;
+        }
+
+        .fila-laser-grande td {
+            vertical-align: top;
+        }
+
+        .badge-laser-grande {
+            display: inline-block;
+            margin-top: 0.3rem;
+            background: linear-gradient(135deg, #c48a2e 0%, #ddb57f 100%);
+            color: #fff;
+            border-radius: 999px;
+            padding: 0.18rem 0.55rem;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
     </style>
     

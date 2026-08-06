@@ -18,13 +18,41 @@ CREATE TABLE IF NOT EXISTS ventas (
     monto REAL NOT NULL,
     monto_usd REAL NOT NULL DEFAULT 0,
     monto_bs REAL NOT NULL DEFAULT 0,
+    monto_bs_raw REAL NOT NULL DEFAULT 0,
+    tasa_bs REAL NOT NULL DEFAULT 0,
+    monto_cop REAL NOT NULL DEFAULT 0,
+    monto_cop_raw REAL NOT NULL DEFAULT 0,
+    tasa_cop REAL NOT NULL DEFAULT 0,
+    metodo_pago_usd TEXT NOT NULL DEFAULT '',
+    metodo_pago_bs TEXT NOT NULL DEFAULT '',
+    metodo_pago_cop TEXT NOT NULL DEFAULT '',
     empleado_id INTEGER NOT NULL,
     servicio_id INTEGER NOT NULL,
     FOREIGN KEY (empleado_id) REFERENCES empleados(id),
     FOREIGN KEY (servicio_id) REFERENCES servicios(id)
 );
+CREATE TABLE IF NOT EXISTS venta_pagos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL,
+    moneda TEXT NOT NULL,
+    monto REAL NOT NULL,
+    monto_usd REAL NOT NULL,
+    metodo_pago TEXT NOT NULL DEFAULT '',
+    tasa REAL NOT NULL DEFAULT 0,
+    FOREIGN KEY (venta_id) REFERENCES ventas(id)
+);
 CREATE TABLE IF NOT EXISTS tasas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL UNIQUE,
     value REAL NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS vales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT NOT NULL,
+    empleado_id INTEGER NOT NULL,
+    moneda TEXT NOT NULL,
+    monto REAL NOT NULL,
+    metodo_pago TEXT NOT NULL DEFAULT '',
+    nota TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (empleado_id) REFERENCES empleados(id)
 );

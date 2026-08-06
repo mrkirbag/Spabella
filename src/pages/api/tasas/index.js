@@ -1,70 +1,121 @@
 import { createClient } from "@libsql/client";
+import { ensureTasasTable, getTasas } from "../../../lib/ventas-schema.js";
 
-const TASA_NOMBRE = "bs";
-
-const getDb = () => createClient({
-    url: import.meta.env.DATABASE_URL,
-    authToken: import.meta.env.DATABASE_AUTH_TOKEN
-});
-
-const ensureTasasTable = async (db) => {
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS tasas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL UNIQUE,
-            value REAL NOT NULL DEFAULT 0
-        )
-    `);
-
-    await db.execute(
-        "INSERT OR IGNORE INTO tasas (nombre, value) VALUES (?, ?)",
-        [TASA_NOMBRE, 0]
-    );
-};
+const getDb = () =>
+    createClient({
+        url: import.meta.env.DATABASE_URL,
+        authToken: import.meta.env.DATABASE_AUTH_TOKEN,
+    });
 
 export async function GET() {
     try {
         const db = getDb();
-        await ensureTasasTable(db);
+        const tasas = await getTasas(db);
 
-        const tasaResponse = await db.execute(
-            "SELECT id, nombre, value FROM tasas WHERE LOWER(nombre) = ? LIMIT 1",
-            [TASA_NOMBRE]
+        return new Response(
+            JSON.stringify({
+                tasas,
+                tasaBs: tasas.bs,
+                tasaCop: tasas.cop,
+                // compatibilidad con UI anterior
+                tasa: { nombre: "bs", value: tasas.bs },
+            }),
+            {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            }
         );
-
-        return new Response(JSON.stringify({ tasa: tasaResponse.rows?.[0] ?? null }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" }
-        });
     } catch (error) {
-        console.error("Error obteniendo tasa:", error);
-        return new Response(JSON.stringify({ error: "Error interno del servidor" }), { status: 500 });
+        console.error("Error obteniendo tasas:", error);
+        return new Response(
+            JSON.stringify({ error: "Error interno del servidor" }),
+            { status: 500 }
+        );
     }
 }
 
 export async function PUT({ request }) {
     try {
-        const { value } = await request.json();
-        const tasaValor = Number(value);
-
-        if (!Number.isFinite(tasaValor) || tasaValor <= 0) {
-            return new Response(JSON.stringify({ error: "La tasa debe ser un numero mayor a cero." }), { status: 400 });
-        }
-
+        const body = await request.json();
         const db = getDb();
         await ensureTasasTable(db);
 
-        await db.execute(
-            "UPDATE tasas SET value = ? WHERE LOWER(nombre) = ?",
-            [tasaValor, TASA_NOMBRE]
-        );
+        // Nuevo formato: { bs, cop } o individual { moneda, value }
+        let bs = body.bs ?? body.tasaBs;
+        let cop = body.cop ?? body.tasaCop;
 
-        return new Response(JSON.stringify({ message: "Tasa BS actualizada exitosamente.", value: tasaValor }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" }
-        });
+        if (body.moneda && body.value !== undefined) {
+            const moneda = String(body.moneda).toLowerCase();
+            if (moneda === "bs") bs = body.value;
+            if (moneda === "cop") cop = body.value;
+        }
+
+        // Compatibilidad: solo { value } actualiza BS
+        if (bs === undefined && cop === undefined && body.value !== undefined) {
+            bs = body.value;
+        }
+
+        const updates = [];
+
+        if (bs !== undefined) {
+            const tasaBs = Number(bs);
+            if (!Number.isFinite(tasaBs) || tasaBs <= 0) {
+                return new Response(
+                    JSON.stringify({
+                        error: "La tasa BS debe ser un numero mayor a cero.",
+                    }),
+                    { status: 400 }
+                );
+            }
+            await db.execute(
+                "UPDATE tasas SET value = ? WHERE LOWER(nombre) = 'bs'",
+                [tasaBs]
+            );
+            updates.push({ moneda: "bs", value: tasaBs });
+        }
+
+        if (cop !== undefined) {
+            const tasaCop = Number(cop);
+            if (!Number.isFinite(tasaCop) || tasaCop <= 0) {
+                return new Response(
+                    JSON.stringify({
+                        error: "La tasa COP debe ser un numero mayor a cero.",
+                    }),
+                    { status: 400 }
+                );
+            }
+            await db.execute(
+                "UPDATE tasas SET value = ? WHERE LOWER(nombre) = 'cop'",
+                [tasaCop]
+            );
+            updates.push({ moneda: "cop", value: tasaCop });
+        }
+
+        if (!updates.length) {
+            return new Response(
+                JSON.stringify({ error: "No se enviaron tasas para actualizar." }),
+                { status: 400 }
+            );
+        }
+
+        const tasas = await getTasas(db);
+
+        return new Response(
+            JSON.stringify({
+                message: "Tasas actualizadas exitosamente.",
+                tasas,
+                updates,
+            }),
+            {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            }
+        );
     } catch (error) {
-        console.error("Error actualizando tasa:", error);
-        return new Response(JSON.stringify({ error: "Error interno del servidor" }), { status: 500 });
+        console.error("Error actualizando tasas:", error);
+        return new Response(
+            JSON.stringify({ error: "Error interno del servidor" }),
+            { status: 500 }
+        );
     }
 }

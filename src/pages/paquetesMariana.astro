@@ -34,7 +34,7 @@ import Layout from '../layouts/Layout.astro';
         </div>
 
         <section id="listaClientesSection" class="lista-clientes-section" hidden>
-            <table id="tablaListaClientes"></table>
+            <table id="tablaListaClientes" class="sp-table"></table>
             <div id="paginacionClientes" class="paginacion-clientes"></div>
         </section>
     </main>
@@ -215,6 +215,7 @@ import Layout from '../layouts/Layout.astro';
             }
 
             const tabla = document.createElement("table");
+            tabla.className = "sp-table";
             tabla.innerHTML = `
                 <thead>
                     <tr>

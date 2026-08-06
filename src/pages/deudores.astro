@@ -6,7 +6,7 @@ import Layout from '../layouts/Layout.astro';
     <main class="container-general">
         <h1>DEUDORES DE PAQUETES</h1>
 
-        <table id="listaDeudores"></table>
+        <table id="listaDeudores" class="sp-table"></table>
     </main>
 
     <script type="module">
@@ -108,7 +108,7 @@ import Layout from '../layouts/Layout.astro';
                         </td>
                         <td>${fechaPaquete}</td>
                         <td>${fechaUltimoAbono}</td>
-                        <td class="saldo-pendiente">${saldoPendiente} USD</td>
+                        <td class="saldo-pendiente sp-num">${saldoPendiente} USD</td>
                     `;
 
                     tbody.appendChild(tr);

@@ -6,7 +6,7 @@ import Layout from '../layouts/Layout.astro';
 
     <main class="container-general">
         <h1>LISTA DE EMPLEADOS</h1>  
-        <table id="lista-empleados"></table>
+        <table id="lista-empleados" class="sp-table"></table>
         
         <div class="container-boton_agregar">
             <a href="/empleados/agregar-empleados" class="boton-agregar">Agregar Empleado</a>
@@ -54,7 +54,7 @@ import Layout from '../layouts/Layout.astro';
                     tr.innerHTML = `
                         <td>${empleado.nombre.toUpperCase()}</td>
                         <td>${empleado.cargo.toUpperCase()}</td>
-                        <td><button type="button" class="boton-eliminar">Eliminar</button></td>
+                    <td class="sp-actions"><button type="button" class="boton-eliminar">Eliminar</button></td>
                     `;
 
                     const btnEliminar = tr.querySelector('.boton-eliminar');

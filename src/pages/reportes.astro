@@ -3,8 +3,7 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout>
-
-    <main class="container-general">
+    <main class="container-general page-facturacion">
         <h1>FACTURACIÓN</h1>
 
         <div class="modulo-busqueda">
@@ -16,467 +15,622 @@ import Layout from '../layouts/Layout.astro';
                 <label for="fechaHasta">Hasta</label>
                 <input type="date" id="fechaHasta" />
             </div>
-            <button id="buscarFacturacion">Generar Facturación</button>
+            <button id="buscarFacturacion" type="button">Generar Facturación</button>
         </div>
 
-        <div id="facturaImprimir" class="facturacion-imprimir">
-            <h2 class="oculto">Reporte de Facturación</h2>
-            <div id="listaFacturacion" class="lista-facturacion"></div>
+        <div id="facturaImprimir" class="facturacion-wrap">
+            <h2 id="tituloFacturacion" class="oculto titulo-reporte">Reporte de Facturación</h2>
+            <div id="listaFacturacion"></div>
+            <section id="cajaFinal" class="sp-panel caja-final" hidden></section>
         </div>
 
         <div class="boton-impresion">
-            <button id="imprimirFacturacion" class="oculto">Imprimir Facturación</button>
+            <button id="imprimirFacturacion" class="oculto" type="button">Imprimir Facturación</button>
         </div>
     </main>
 
-
-
     <script type="module">
+        const fmt = (n) => Number(n || 0).toFixed(2);
 
-        const formatearMonto = (monto) => Number(monto || 0).toFixed(2);
+        const colorMoneda = (moneda) => {
+            if (moneda === "USD") return "sp-money-usd";
+            if (moneda === "COP") return "sp-money-cop";
+            return "sp-money-bs";
+        };
+
+        const renderPagos = (pagos = []) => {
+            if (!pagos.length) return `<span class="rf-dash">—</span>`;
+            return `
+                <div class="sp-money">
+                    ${pagos.map((pago) => `
+                        <div class="sp-money-item ${colorMoneda(pago.moneda)}">
+                            <strong>${fmt(pago.monto)}</strong>
+                            <span>${pago.moneda}</span>
+                        </div>
+                        <span class="sp-money-meta">${pago.metodo || "Sin método"}</span>
+                    `).join("")}
+                </div>
+            `;
+        };
+
+        const renderPartes = (data) => {
+            const items = [];
+            if (Number(data?.usd) > 0) {
+                items.push(`
+                    <div class="sp-money-item sp-money-usd">
+                        <strong>${fmt(data.usd)}</strong>
+                        <span>USD</span>
+                    </div>
+                `);
+            }
+            if (Number(data?.cop) > 0) {
+                items.push(`
+                    <div class="sp-money-item sp-money-cop">
+                        <strong>${fmt(data.cop)}</strong>
+                        <span>COP</span>
+                    </div>
+                `);
+            }
+            if (Number(data?.bs) > 0) {
+                items.push(`
+                    <div class="sp-money-item sp-money-bs">
+                        <strong>${fmt(data.bs)}</strong>
+                        <span>BS</span>
+                    </div>
+                `);
+            }
+            return items.length
+                ? `<div class="sp-money">${items.join("")}</div>`
+                : `<span class="rf-dash">—</span>`;
+        };
+
+        const bloqueTotales = (titulo, data, tipo = "producido", nota = "") => `
+            <div class="rf-bloque rf-bloque-${tipo}">
+                <div class="rf-bloque-head">
+                    <div class="rf-bloque-head-text">
+                        <span class="rf-bloque-label">${
+                            tipo === "empleada" ? "Comisión"
+                            : tipo === "spa" ? "Retención"
+                            : tipo === "vale" ? "Anticipo"
+                            : tipo === "apagar" ? "Liquidación"
+                            : "Ingreso"
+                        }</span>
+                        <h3>${titulo}</h3>
+                        ${nota ? `<p class="rf-bloque-nota">${nota}</p>` : ""}
+                    </div>
+                    <span class="rf-bloque-mark" aria-hidden="true"></span>
+                </div>
+                <div class="sp-totales rf-totales">
+                    <div class="sp-total sp-total-usd">
+                        <span>USD</span>
+                        <strong>${fmt(data?.usd)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-cop">
+                        <span>COP</span>
+                        <strong>${fmt(data?.cop)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-bs">
+                        <span>BS</span>
+                        <strong>${fmt(data?.bs)}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
 
         document.getElementById("buscarFacturacion").addEventListener("click", async () => {
+            const desde = document.getElementById("fechaDesde").value;
+            const hasta = document.getElementById("fechaHasta").value;
+            const lista = document.getElementById("listaFacturacion");
+            const cajaFinal = document.getElementById("cajaFinal");
+            const btnPrint = document.getElementById("imprimirFacturacion");
+            const titulo = document.getElementById("tituloFacturacion");
 
-            const fechaDesde = document.getElementById("fechaDesde").value;
-            const fechaHasta = document.getElementById("fechaHasta").value;
-
-            const response = await fetch(`/api/reportes-ventas?desde=${fechaDesde}&hasta=${fechaHasta}`);
-            const facturacion = await response.json();
-            const listaFacturacion = document.getElementById("listaFacturacion");
-
-            listaFacturacion.innerHTML = ""; 
-
-            // Si no hay registros, mostrar mensaje de error
-            if (facturacion.mensaje) { 
-                listaFacturacion.innerHTML = `<p style="color: red; text-align: center;">${facturacion.mensaje}</p>`;
+            if (!desde || !hasta) {
+                alert("Selecciona el rango de fechas.");
                 return;
             }
 
-            facturacion.forEach(empleada => {
+            const response = await fetch(`/api/reportes-ventas?desde=${desde}&hasta=${hasta}`);
+            const data = await response.json();
 
-                // Crear tabla y mostrar encabezado
+            lista.innerHTML = "";
+            cajaFinal.hidden = true;
+            cajaFinal.innerHTML = "";
 
-                const tabla = document.createElement("table");
-                tabla.classList.add("tabla-facturacion");
-                tabla.innerHTML = `
-                    <thead>
-                        <tr class="fila-resumen">
-                            <th colspan="6" class="encabezado-resumen">
-                                <div class="resumen-wrap">
-                                    <span class="resumen-nombre">${empleada.nombre.toUpperCase()}</span>
-                                    <div class="resumen-grupo resumen-empleada">
-                                        <span class="resumen-titulo">EMPLEADA</span>
-                                        <span class="resumen-chip resumen-chip-usd">USD ${formatearMonto(empleada.totalEmpleadoUsd)}</span>
-                                        <span class="resumen-separador">-</span>
-                                        <span class="resumen-chip resumen-chip-bs">BS ${formatearMonto(empleada.totalEmpleadoBs)}</span>
-                                    </div>
-                                    <div class="resumen-grupo resumen-spa">
-                                        <span class="resumen-titulo">SPA</span>
-                                        <span class="resumen-chip resumen-chip-usd">USD ${formatearMonto(empleada.totalSpaUsd)}</span>
-                                        <span class="resumen-separador">-</span>
-                                        <span class="resumen-chip resumen-chip-bs">BS ${formatearMonto(empleada.totalSpaBs)}</span>
-                                    </div>
-                                </div>
-                            </th>
+            if (data.mensaje) {
+                lista.innerHTML = `<p class="sp-msg-empty sp-panel" style="padding:1.1rem;">${data.mensaje}</p>`;
+                btnPrint.classList.add("oculto");
+                btnPrint.classList.remove("visible");
+                titulo.classList.add("oculto");
+                titulo.classList.remove("visible");
+                return;
+            }
+
+            const empleadas = data.empleadas || [];
+            const generales = data.totalesGenerales || {};
+            const tasas = data.tasas || {};
+
+            empleadas.forEach((emp, index) => {
+                const panel = document.createElement("section");
+                panel.className = "sp-panel rf-panel";
+
+                const filas = (emp.servicios || []).map((s) => {
+                    const fecha = new Date(s.fecha + "T00:00:00").toLocaleDateString("es-ES", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                    });
+                    return `
+                        <tr>
+                            <td class="rf-fecha">${fecha}</td>
+                            <td class="sp-desc">
+                                <strong>${s.descripcion}</strong>
+                                <small>SPA ${fmt(s.porcentajeSpa)}% · Emp. ${fmt(s.porcentajeEmpleado)}%</small>
+                            </td>
+                            <td class="sp-num sp-usd">${fmt(s.montoTotalUsd)}</td>
+                            <td>${renderPagos(s.pagos)}</td>
+                            <td>${renderPartes(s.empleado)}</td>
+                            <td>${renderPartes(s.spa)}</td>
                         </tr>
-                        <tr class="fila-columnas">
-                            <th>Fecha</th>
-                            <th>Reparto</th>
-                            <th>Total USD</th>
-                            <th>Pago Cliente</th>
-                            <th>Empleado</th>
-                            <th>Spa</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
+                    `;
+                }).join("");
+
+                panel.innerHTML = `
+                    <div class="sp-panel-header">
+                        <div>
+                            <p class="sp-eyebrow">Empleada ${index + 1}</p>
+                            <h2>${emp.nombre}</h2>
+                        </div>
+                        <span class="sp-chip">${(emp.servicios || []).length} venta${(emp.servicios || []).length === 1 ? "" : "s"}${(emp.vales || []).length ? ` · ${emp.vales.length} vale${emp.vales.length === 1 ? "" : "s"}` : ""}</span>
+                    </div>
+
+                    ${bloqueTotales("Producido", emp.totales?.producido, "producido", "Total cobrado en el período")}
+                    ${bloqueTotales("Para la empleada", emp.totales?.empleado, "empleada", "Parte correspondiente según %")}
+                    ${bloqueTotales("Vales descontados", emp.totales?.vales, "vale", "Anticipos entregados en el período")}
+                    ${bloqueTotales("A pagar", emp.totales?.aPagar, "apagar", "Comisión menos vales")}
+                    ${bloqueTotales("Para el SPA", emp.totales?.spa, "spa", "Parte retenida por Spabella")}
+
+                    ${
+                        (emp.vales || []).length
+                            ? `
+                        <div class="sp-panel-body">
+                            <h3 class="sp-subtitle">Vales de la empleada</h3>
+                            <table class="sp-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Monto</th>
+                                        <th>Método</th>
+                                        <th>Nota</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${emp.vales.map((v) => `
+                                        <tr>
+                                            <td>${v.fecha}</td>
+                                            <td class="sp-num">${fmt(v.monto)} ${v.moneda}</td>
+                                            <td>${v.metodo || "—"}</td>
+                                            <td>${v.nota || "—"}</td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    `
+                            : ""
+                    }
+
+                    <div class="sp-panel-body">
+                        <h3 class="sp-subtitle">Detalle de servicios</h3>
+                        <table class="sp-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Servicio</th>
+                                    <th>Total USD</th>
+                                    <th>Pagos</th>
+                                    <th>Empleada</th>
+                                    <th>SPA</th>
+                                </tr>
+                            </thead>
+                            <tbody>${filas || `<tr><td colspan="6" class="sp-empty">Sin servicios en el período.</td></tr>`}</tbody>
+                        </table>
+                    </div>
                 `;
 
-                const tbody = tabla.querySelector("tbody");
-
-
-                empleada.servicios.forEach(servicio => {
-
-                    // Crear fila y mostrar datos
-
-                    // Formatear fecha
-                    const fechaObjeto = new Date(servicio.fecha + "T00:00:00");
-                    const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
-                    const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
-
-                    const fila = document.createElement("tr");
-                    fila.innerHTML = `
-                        <td class="col-fecha">${fechaFormateada}</td>
-                        <td class="col-servicio">
-                            <span class="servicio-nombre">SPA ${formatearMonto(servicio.porcentajeSpa)}% / EMPLEADA ${formatearMonto(servicio.porcentajeEmpleado)}%</span><br>
-                            <span class="servicio-descripcion">${servicio.descripcion}</span>
-                        </td>
-                        <td class="col-monto">${formatearMonto(servicio.montoTotalUsd)} USD</td>
-                        <td class="col-monto col-cliente">
-                            <div class="moneda-linea moneda-usd">
-                                <span class="moneda-tag">USD</span>
-                                <span class="moneda-valor">${formatearMonto(servicio.pagoClienteUsd)}</span>
-                            </div>
-                            <div class="moneda-linea moneda-bs">
-                                <span class="moneda-tag">BS</span>
-                                <span class="moneda-valor">${formatearMonto(servicio.pagoClienteBs)}</span>
-                            </div>
-                        </td>
-                        <td class="col-monto col-empleada">
-                            <div class="moneda-linea moneda-usd">
-                                <span class="moneda-tag">USD</span>
-                                <span class="moneda-valor">${formatearMonto(servicio.montoEmpleadoUsd)}</span>
-                            </div>
-                            <div class="moneda-linea moneda-bs">
-                                <span class="moneda-tag">BS</span>
-                                <span class="moneda-valor">${formatearMonto(servicio.montoEmpleadoBs)}</span>
-                            </div>
-                        </td>
-                        <td class="col-monto col-spa">
-                            <div class="moneda-linea moneda-usd">
-                                <span class="moneda-tag">USD</span>
-                                <span class="moneda-valor">${formatearMonto(servicio.montoSpaUsd)}</span>
-                            </div>
-                            <div class="moneda-linea moneda-bs">
-                                <span class="moneda-tag">BS</span>
-                                <span class="moneda-valor">${formatearMonto(servicio.montoSpaBs)}</span>
-                            </div>
-                        </td>
-                    `;
-                    tbody.appendChild(fila);
-                });
-
-                listaFacturacion.appendChild(tabla);
-
+                lista.appendChild(panel);
             });
-            
-            // Mostrar boton de impresión y titulo
 
-            document.getElementById("imprimirFacturacion").classList.add("visible");
-            document.getElementById("imprimirFacturacion").classList.remove("oculto");
+            const metodosRows = (generales.porMetodo || []).map((m) => `
+                <tr>
+                    <td><strong>${m.metodo}</strong></td>
+                    <td class="sp-num sp-usd">${m.usd > 0 ? fmt(m.usd) : "—"}</td>
+                    <td class="sp-num sp-cop">${m.cop > 0 ? fmt(m.cop) : "—"}</td>
+                    <td class="sp-num sp-bs">${m.bs > 0 ? fmt(m.bs) : "—"}</td>
+                </tr>
+            `).join("");
 
-            document.querySelector("h2").classList.add("visible");
-            document.querySelector("h2").classList.remove("oculto");
-            
+            cajaFinal.hidden = false;
+            cajaFinal.innerHTML = `
+                <div class="sp-panel-header rf-header-caja">
+                    <div>
+                        <p class="sp-eyebrow">Cierre de caja</p>
+                        <h2>Totales generales del período</h2>
+                    </div>
+                    <span class="sp-chip">BS ${tasas.bs > 0 ? fmt(tasas.bs) : "N/D"} · COP ${tasas.cop > 0 ? fmt(tasas.cop) : "N/D"}</span>
+                </div>
 
-    
-        });
+                <div class="sp-totales">
+                    <div class="sp-total sp-total-usd">
+                        <span>Caja USD</span>
+                        <strong>${fmt(generales.caja?.usd)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-cop">
+                        <span>Caja COP</span>
+                        <strong>${fmt(generales.caja?.cop)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-bs">
+                        <span>Caja BS</span>
+                        <strong>${fmt(generales.caja?.bs)}</strong>
+                    </div>
+                </div>
 
-        // Imprimir facturación
-        document.getElementById("imprimirFacturacion").addEventListener("click", () => {
-            const contenido = document.getElementById("facturaImprimir").innerHTML;
-            const ventana = window.open('', '', 'width=800,height=600');
-            
-            ventana.document.body.innerHTML = `
-                <html>
-                    <head>
-                        <title>Reporte de Facturación</title>
-                        <style>
-                            body { 
-                                font-family: Arial, sans-serif; 
-                                margin: 20px; 
-                            }
-                            table { 
-                                width: 100%; 
-                                border-collapse: collapse;
-                                margin-bottom: 1.5rem;
-                            }
-                            th, td { 
-                                border: 1px solid #000; 
-                                padding: 8px; 
-                                text-align: left; 
-                            }
-                            thead { 
-                                background: #ddd; 
-                                font-weight: bold; 
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        ${contenido}
-                    </body>
-                </html>
+                ${bloqueTotales("Total empleadas", generales.empleado, "empleada", "Suma de comisiones del período")}
+                ${bloqueTotales("Total vales", generales.vales, "vale", "Anticipos del período")}
+                ${bloqueTotales("Total a pagar", generales.aPagar, "apagar", "Comisiones menos vales")}
+                ${bloqueTotales("Total SPA", generales.spa, "spa", "Suma retenida por Spabella")}
+
+                <div class="sp-panel-body">
+                    <p class="rf-meta">${empleadas.length} empleada${empleadas.length === 1 ? "" : "s"} · ${data.totalVentas || 0} ventas · ${data.totalVales || 0} vales</p>
+                    <h3 class="sp-subtitle">Caja por método de pago</h3>
+                    <table class="sp-table">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th>USD</th>
+                                <th>COP</th>
+                                <th>BS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${metodosRows || `<tr><td colspan="4" class="sp-empty">Sin pagos registrados.</td></tr>`}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total</td>
+                                <td class="sp-num sp-usd">${fmt(generales.caja?.usd)}</td>
+                                <td class="sp-num sp-cop">${fmt(generales.caja?.cop)}</td>
+                                <td class="sp-num sp-bs">${fmt(generales.caja?.bs)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             `;
 
-            
-            ventana.document.close();
-            ventana.print();
+            btnPrint.classList.add("visible");
+            btnPrint.classList.remove("oculto");
+            titulo.classList.add("visible");
+            titulo.classList.remove("oculto");
         });
 
+        document.getElementById("imprimirFacturacion").addEventListener("click", () => {
+            const contenido = document.getElementById("facturaImprimir").innerHTML;
+            const ventana = window.open("", "", "width=980,height=720");
+            ventana.document.write(`
+                <html>
+                <head>
+                    <title>Facturación</title>
+                    <style>
+                        body{font-family:Arial,sans-serif;margin:16px;color:#222}
+                        h2,h3{margin:0 0 6px;text-align:left}
+                        .sp-panel{border:1px solid #999;margin-bottom:14px;padding:10px;page-break-inside:avoid}
+                        .sp-totales{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 0}
+                        .sp-total{border:1px solid #ccc;padding:8px}
+                        table{width:100%;border-collapse:collapse;margin-top:8px}
+                        th,td{border:1px solid #000;padding:6px;font-size:11px;vertical-align:top;text-align:left}
+                        thead th{background:#ddd}
+                        .sp-money-item{margin-bottom:2px}
+                        small{display:block;color:#555}
+                    </style>
+                </head>
+                <body>${contenido}</body>
+                </html>
+            `);
+            ventana.document.close();
+            ventana.focus();
+            ventana.print();
+        });
     </script>
 
-    <style>
-
-        .lista-facturacion {
-            width: 100%;
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        .tabla-facturacion {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            overflow: hidden;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.78);
-            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
-        }
-
-        .tabla-facturacion th,
-        .tabla-facturacion td {
-            padding: 0.7rem 0.85rem;
-            border-bottom: 1px solid #ece8e2;
-            font-size: 0.88rem;
-            vertical-align: top;
-        }
-
-        .tabla-facturacion thead .encabezado-resumen {
-            background: linear-gradient(135deg, #4D4D4D 0%, #686868 100%);
-            color: #ffffff;
-            letter-spacing: 0.015em;
+    <style is:global>
+        /* Aislamiento: los globales de Style.astro no deben romper HTML dinámico */
+        .page-facturacion {
             text-align: left;
-            font-weight: 700;
-            font-size: 0.84rem;
-            text-transform: uppercase;
+            overflow-x: clip;
         }
 
-        .tabla-facturacion .resumen-wrap {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            flex-wrap: wrap;
+        .page-facturacion .facturacion-wrap {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            text-align: left;
         }
 
-        .tabla-facturacion .resumen-nombre {
-            font-size: 0.85rem;
+        .page-facturacion .titulo-reporte {
+            text-align: center !important;
+            margin: 0 0 1rem !important;
+            color: #4d4d4d;
+            font-size: 1.25rem;
             font-weight: 800;
-            letter-spacing: 0.04em;
-            margin-right: 0.25rem;
         }
 
-        .tabla-facturacion .resumen-grupo {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.2rem 0.36rem;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.14);
+        .page-facturacion #listaFacturacion {
+            display: grid;
+            gap: 1.25rem;
+            width: 100%;
         }
 
-        .tabla-facturacion .resumen-titulo {
-            font-size: 0.66rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            opacity: 0.95;
-            margin-right: 0.15rem;
+        .page-facturacion .sp-panel,
+        .page-facturacion .rf-panel {
+            width: 100%;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+            overflow: visible;
+            text-align: left !important;
         }
 
-        .tabla-facturacion .resumen-chip {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            padding: 0.12rem 0.42rem;
-            font-size: 0.69rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
+        .page-facturacion .sp-panel-header {
+            text-align: left;
         }
 
-        .tabla-facturacion .resumen-separador {
-            font-size: 0.76rem;
-            font-weight: 700;
-            opacity: 0.9;
-            margin: 0 0.05rem;
+        .page-facturacion .sp-panel-header h2 {
+            margin: 0 !important;
+            text-align: left !important;
+            color: #4d4d4d !important;
+            font-size: 1.2rem !important;
+            font-weight: 800 !important;
+            text-transform: capitalize;
         }
 
-        .tabla-facturacion .resumen-chip-usd {
-            background: rgba(31, 95, 57, 0.26);
-            color: #dff9ea;
+        .page-facturacion .sp-eyebrow {
+            text-align: left;
         }
 
-        .tabla-facturacion .resumen-chip-bs {
-            background: rgba(63, 79, 143, 0.28);
-            color: #e2e8ff;
+        .page-facturacion .rf-header-caja {
+            background: linear-gradient(135deg, #4d4d4d 0%, #6a6a6a 100%);
+            border-bottom-color: #3a3a3a;
         }
 
-        .tabla-facturacion thead .fila-columnas th {
-            background: #f6efe3;
-            color: #3a3a3a;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.035em;
+        .page-facturacion .rf-header-caja h2,
+        .page-facturacion .rf-header-caja .sp-eyebrow {
+            color: #fff !important;
         }
 
-        .tabla-facturacion tbody tr:nth-child(even) {
-            background: rgba(247, 241, 232, 0.35);
+        .page-facturacion .rf-header-caja .sp-eyebrow {
+            opacity: 0.75;
         }
 
-        .tabla-facturacion tbody tr:hover {
-            background: rgba(221, 181, 127, 0.13);
+        .page-facturacion .rf-header-caja .sp-chip {
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
         }
 
-        .tabla-facturacion .col-fecha,
-        .tabla-facturacion .col-servicio {
-            font-weight: 600;
-            color: #4D4D4D;
-            white-space: nowrap;
+        .page-facturacion .rf-bloque {
+            margin: 0.85rem 1.15rem 0;
+            border-radius: 12px;
+            border: 1px solid #eadfce;
+            overflow: hidden;
+            background: #fff;
         }
 
-        .tabla-facturacion .col-fecha {
-            font-weight: 600;
-            color: #4D4D4D;
-            white-space: nowrap;
-        }
-
-        .tabla-facturacion .col-servicio {
-            max-width: 300px;
-            white-space: normal;
+        .page-facturacion .rf-bloque-head {
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.22rem;
-        }
-
-        .tabla-facturacion .servicio-nombre {
-            display: block;
-            line-height: 1.25;
-        }
-
-        .tabla-facturacion .servicio-porcentajes {
-            display: inline-block;
-            font-size: 0.68rem;
-            font-weight: 700;
-            color: #7a5a00;
-            background: rgba(255, 213, 79, 0.32);
-            border: 1px solid rgba(255, 193, 7, 0.45);
-            border-radius: 999px;
-            padding: 0.11rem 0.42rem;
-            letter-spacing: 0.03em;
-        }
-
-        .tabla-facturacion .servicio-descripcion {
-            display: block;
-            line-height: 1.3;
-            font-size: 0.75rem;
-            color: #5a5a5a;
-        }
-
-        .tabla-facturacion .col-monto {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-            font-weight: 600;
-        }
-
-        .tabla-facturacion .moneda-linea {
-            display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            gap: 0.45rem;
-            border-radius: 999px;
-            padding: 0.14rem 0.42rem;
-            margin-bottom: 0.26rem;
-            line-height: 1.15;
+            gap: 0.75rem;
+            padding: 0.7rem 0.95rem;
+            border-bottom: 1px solid transparent;
         }
 
-        .tabla-facturacion .moneda-linea:last-child {
-            margin-bottom: 0;
+        .page-facturacion .rf-bloque-head-text {
+            min-width: 0;
+            text-align: left;
         }
 
-        .tabla-facturacion .moneda-tag {
+        .page-facturacion .rf-bloque-label {
             display: inline-block;
-            min-width: 34px;
-            text-align: center;
-            border-radius: 999px;
-            padding: 0.1rem 0.35rem;
-            font-size: 0.66rem;
-            letter-spacing: 0.04em;
-            font-weight: 600;
-            color: #ffffff;
+            font-size: 0.62rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 0.12rem;
+            opacity: 0.85;
         }
 
-        .tabla-facturacion .moneda-valor {
-            font-size: 0.82rem;
+        .page-facturacion .rf-bloque-head h3 {
+            margin: 0 !important;
+            text-align: left !important;
+            font-size: 1rem !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.01em;
+            line-height: 1.2;
+            color: inherit !important;
+        }
+
+        .page-facturacion .rf-bloque-nota {
+            margin: 0.2rem 0 0;
+            font-size: 0.72rem;
+            font-weight: 600;
+            opacity: 0.8;
+            line-height: 1.3;
+        }
+
+        .page-facturacion .rf-bloque-mark {
+            flex-shrink: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+        }
+
+        .page-facturacion .rf-bloque-producido .rf-bloque-head {
+            background: linear-gradient(135deg, #c48a2e 0%, #ddb57f 100%);
+            color: #fffaf0;
+            border-bottom-color: #b57a22;
+        }
+
+        .page-facturacion .rf-bloque-producido .rf-bloque-mark {
+            background: #fff6e8;
+        }
+
+        .page-facturacion .rf-bloque-empleada .rf-bloque-head {
+            background: linear-gradient(135deg, #1f5f39 0%, #3d8a58 100%);
+            color: #f3faf5;
+            border-bottom-color: #184a2d;
+        }
+
+        .page-facturacion .rf-bloque-empleada .rf-bloque-mark {
+            background: #e8f4ec;
+        }
+
+        .page-facturacion .rf-bloque-spa .rf-bloque-head {
+            background: linear-gradient(135deg, #3f4f8f 0%, #5d6fad 100%);
+            color: #f4f6fc;
+            border-bottom-color: #334175;
+        }
+
+        .page-facturacion .rf-bloque-spa .rf-bloque-mark {
+            background: #e9eef8;
+        }
+
+        .page-facturacion .rf-bloque-vale .rf-bloque-head {
+            background: linear-gradient(135deg, #9b3b3b 0%, #c45c5c 100%);
+            color: #fff5f5;
+            border-bottom-color: #7e2f2f;
+        }
+
+        .page-facturacion .rf-bloque-vale .rf-bloque-mark {
+            background: #fdeaea;
+        }
+
+        .page-facturacion .rf-bloque-apagar .rf-bloque-head {
+            background: linear-gradient(135deg, #2f4a3a 0%, #4d4d4d 100%);
+            color: #f5f7f6;
+            border-bottom-color: #24382c;
+        }
+
+        .page-facturacion .rf-bloque-apagar .rf-bloque-mark {
+            background: #e8f4ec;
+        }
+
+        .page-facturacion .rf-bloque .rf-totales {
+            padding: 0.75rem !important;
+            margin: 0;
+        }
+
+        .page-facturacion .rf-totales,
+        .page-facturacion .sp-totales {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .page-facturacion .sp-total-cop,
+        .page-facturacion .sp-money-cop {
+            background: #f7f0e4;
+            color: #8a5a12;
+        }
+
+        .page-facturacion .sp-total-cop {
+            border-left: 5px solid #c48a2e;
+        }
+
+        .page-facturacion .sp-panel-body {
+            padding: 0.85rem 1.15rem 1.2rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .page-facturacion .sp-panel-body .sp-subtitle {
+            margin: 0 0 0.65rem !important;
+            text-align: left !important;
+        }
+
+        .page-facturacion .sp-panel table,
+        .page-facturacion .sp-panel .sp-table {
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            table-layout: auto;
+        }
+
+        .page-facturacion .sp-panel table thead th,
+        .page-facturacion .sp-panel .sp-table thead th {
+            background: #4d4d4d !important;
+            color: #fff !important;
+            text-align: left !important;
+        }
+
+        .page-facturacion .sp-panel table td,
+        .page-facturacion .sp-panel .sp-table td {
+            text-align: left !important;
+            vertical-align: top !important;
+            word-break: break-word;
+        }
+
+        .page-facturacion .sp-panel .sp-num {
+            text-align: right !important;
+            white-space: nowrap;
+        }
+
+        .page-facturacion .rf-fecha {
+            white-space: nowrap;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .page-facturacion .sp-cop {
+            color: #8a5a12 !important;
+        }
+
+        .page-facturacion .rf-dash {
+            color: #c0b6a8;
             font-weight: 700;
         }
 
-        .tabla-facturacion .moneda-usd {
-            background: rgba(31, 95, 57, 0.11);
+        .page-facturacion .rf-meta {
+            margin: 0 0 0.75rem;
+            color: #7a7165;
+            font-size: 0.85rem;
+            font-weight: 700;
         }
 
-        .tabla-facturacion .moneda-usd .moneda-tag {
-            background: #1f5f39;
+        .page-facturacion .caja-final {
+            margin-top: 1.25rem;
         }
 
-        .tabla-facturacion .moneda-bs {
-            background: rgba(63, 79, 143, 0.11);
+        .page-facturacion .sp-desc small {
+            display: inline-block;
+            margin-top: 0.2rem;
         }
 
-        .tabla-facturacion .moneda-bs .moneda-tag {
-            background: #3f4f8f;
+        @media (max-width: 768px) {
+            .page-facturacion .rf-totales,
+            .page-facturacion .sp-totales {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .tabla-facturacion .col-empleada {
-            color: #1f5f39;
-        }
-
-        .tabla-facturacion .col-spa {
-            color: #3f4f8f;
-        }
-
-        .tabla-facturacion .col-cliente {
-            color: #444444;
-        }
-
-        .facturacion-imprimir h2 {
-            margin-bottom: 1rem;
-        }
-
-        /* CSS de impresion */
         @media print {
-            button { 
-                display: none !important; 
-            }
-
-            .tabla-facturacion {
-                box-shadow: none;
-                border: 1px solid #000;
-                border-radius: 0;
-                background: #fff;
-            }
-
-            .tabla-facturacion thead .encabezado-resumen,
-            .tabla-facturacion thead .fila-columnas th {
-                color: #000 !important;
-                background: #ddd !important;
-            }
-
-            .tabla-facturacion tbody tr:nth-child(even),
-            .tabla-facturacion tbody tr:hover {
-                background: #fff !important;
+            .page-facturacion .modulo-busqueda,
+            .page-facturacion .boton-impresion,
+            .page-facturacion button {
+                display: none !important;
             }
         }
-
-        @media (max-width: 1024px) {
-            .tabla-facturacion {
-                display: block;
-                overflow-x: auto;
-            }
-
-            .tabla-facturacion .col-servicio {
-                min-width: 220px;
-            }
-
-            .tabla-facturacion .col-servicio,
-            .tabla-facturacion .col-monto {
-                min-width: 125px;
-            }
-
-            .tabla-facturacion .resumen-wrap {
-                align-items: flex-start;
-                gap: 0.5rem;
-            }
-        }
-
     </style>
 </Layout>

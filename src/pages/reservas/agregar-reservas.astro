@@ -3,86 +3,143 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout>
-    
-    <main class="container-general">
+    <main class="container-general page-agregar-reserva">
         <h1 id="titulo-formulario">AGREGAR RESERVA</h1>
 
-        <form action="/agregar-reservas" id="formulario">
+        <form id="formulario">
             <label for="fecha">Fecha</label>
-            <input type="date" name="fecha" id="fecha"/>
-            <br />
+            <input type="date" name="fecha" id="fecha" />
+
             <label for="descripcion">Descripción del servicio</label>
-            <input type="text" name="descripcion" id="descripcion" placeholder="Descripción del Servicio" />
-            <br />
+            <input type="text" name="descripcion" id="descripcion" placeholder="Ej: Depilación láser axilas..." />
+
             <div id="contenedor-buscar-cliente">
                 <label for="buscar-cliente">Buscar paciente</label>
                 <input type="text" id="buscar-cliente" placeholder="Buscar paciente" autocomplete="off" />
-                <br />
             </div>
+
             <label for="cliente-id">Paciente</label>
             <select name="cliente-id" id="cliente-id">
                 <option value="">Paciente</option>
             </select>
-            <br />
-            <button type="submit" id="boton-submit" style="margin-top: 40px;">Agregar</button>
+
+            <div id="aviso-laser" class="aviso-laser" hidden>
+                <strong>Paciente con paquete láser grande</strong>
+                <p id="aviso-laser-texto"></p>
+                <p class="aviso-laser-nota">Esta cita se enviará a <strong>Agenda Láser</strong> (citas que demoran más).</p>
+            </div>
+
+            <label class="check-laser" for="laser-largo" id="wrap-laser-check">
+                <input type="checkbox" id="laser-largo" name="laser-largo" />
+                <span>
+                    <strong>Ir a Agenda Láser (cita larga)</strong>
+                    <small>Se marca solo si el paciente tiene paquete de varias zonas. Puedes cambiarlo si hace falta.</small>
+                </span>
+            </label>
+
+            <button type="submit" id="boton-submit">Agregar</button>
         </form>
+    </main>
 
     <script type="module">
-
         const queryParams = new URLSearchParams(window.location.search);
-        const reservaId = queryParams.get('id');
+        const reservaId = queryParams.get("id");
 
-        const tituloFormulario = document.getElementById('titulo-formulario');
-        const botonSubmit = document.getElementById('boton-submit');
-        const fechaInput = document.getElementById('fecha');
-        const descripcionInput = document.getElementById('descripcion');
-        const contenedorBuscarCliente = document.getElementById('contenedor-buscar-cliente');
-        const buscarClienteInput = document.getElementById('buscar-cliente');
-        const clienteSelect = document.getElementById('cliente-id');
+        const tituloFormulario = document.getElementById("titulo-formulario");
+        const botonSubmit = document.getElementById("boton-submit");
+        const fechaInput = document.getElementById("fecha");
+        const descripcionInput = document.getElementById("descripcion");
+        const contenedorBuscarCliente = document.getElementById("contenedor-buscar-cliente");
+        const buscarClienteInput = document.getElementById("buscar-cliente");
+        const clienteSelect = document.getElementById("cliente-id");
+        const laserLargoInput = document.getElementById("laser-largo");
+        const avisoLaser = document.getElementById("aviso-laser");
+        const avisoLaserTexto = document.getElementById("aviso-laser-texto");
+
         let clientesCache = [];
-        let clienteSeleccionadoId = '';
+        let clienteSeleccionadoId = "";
         let reservaOriginal = null;
+        let overrideManual = false;
 
-        const renderClientes = (filtro = '') => {
+        const clientePorId = (id) =>
+            clientesCache.find((c) => String(c.id) === String(id));
+
+        const actualizarAvisoLaser = (cliente) => {
+            if (cliente?.laserGrande) {
+                avisoLaser.hidden = false;
+                avisoLaserTexto.textContent = cliente.paqueteLaser
+                    ? `Paquete activo: ${cliente.paqueteLaser}${
+                          cliente.sesionesRestantes
+                              ? ` · ${cliente.sesionesRestantes} sesión(es) restante(s)`
+                              : ""
+                      }`
+                    : "Tiene un paquete de láser de varias zonas activo.";
+                if (!overrideManual) laserLargoInput.checked = true;
+            } else {
+                avisoLaser.hidden = true;
+                avisoLaserTexto.textContent = "";
+                if (!overrideManual && !reservaId) laserLargoInput.checked = false;
+            }
+        };
+
+        const renderClientes = (filtro = "") => {
             const termino = filtro.trim().toLowerCase();
             const clientesFiltrados = termino
                 ? clientesCache.filter((cliente) => {
-                    const textoBusqueda = `${cliente.nombre} ${cliente.celular}`.toLowerCase();
-                    return textoBusqueda.includes(termino);
-                })
+                      const textoBusqueda = `${cliente.nombre} ${cliente.celular}`.toLowerCase();
+                      return textoBusqueda.includes(termino);
+                  })
                 : clientesCache;
 
-            clienteSelect.innerHTML = '';
+            const laser = clientesFiltrados.filter((c) => c.laserGrande);
+            const normales = clientesFiltrados.filter((c) => !c.laserGrande);
 
-            const optionDefault = document.createElement('option');
-            optionDefault.value = '';
+            clienteSelect.innerHTML = "";
+
+            const optionDefault = document.createElement("option");
+            optionDefault.value = "";
             optionDefault.textContent = clientesFiltrados.length
-                ? 'Paciente'
-                : 'Sin resultados';
+                ? "Selecciona paciente"
+                : "Sin resultados";
             clienteSelect.appendChild(optionDefault);
 
-            clientesFiltrados.forEach((cliente) => {
-                const option = document.createElement('option');
-                option.value = cliente.id;
-                option.textContent = `${cliente.nombre.toUpperCase()} - 0${cliente.celular}`;
-                clienteSelect.appendChild(option);
-            });
+            const addGroup = (label, lista) => {
+                if (!lista.length) return;
+                const group = document.createElement("optgroup");
+                group.label = label;
+                lista.forEach((cliente) => {
+                    const option = document.createElement("option");
+                    option.value = cliente.id;
+                    option.textContent = cliente.laserGrande
+                        ? `⚡ ${cliente.nombre.toUpperCase()} — LÁSER GRANDE`
+                        : `${cliente.nombre.toUpperCase()} - 0${cliente.celular}`;
+                    option.dataset.laserGrande = cliente.laserGrande ? "1" : "0";
+                    group.appendChild(option);
+                });
+                clienteSelect.appendChild(group);
+            };
+
+            addGroup("Pacientes con paquete láser grande", laser);
+            addGroup("Otros pacientes", normales);
 
             if (clienteSeleccionadoId) {
                 clienteSelect.value = String(clienteSeleccionadoId);
             }
         };
 
+        laserLargoInput.addEventListener("change", () => {
+            overrideManual = true;
+        });
+
         if (reservaId) {
-            tituloFormulario.textContent = 'REPROGRAMAR RESERVA';
-            botonSubmit.textContent = 'Actualizar';
-            contenedorBuscarCliente.style.display = 'none';
+            tituloFormulario.textContent = "REPROGRAMAR RESERVA";
+            botonSubmit.textContent = "Actualizar";
+            contenedorBuscarCliente.style.display = "none";
             descripcionInput.readOnly = true;
             clienteSelect.disabled = true;
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
-
             try {
                 const response = await fetch("/api/clientes/rellenar-selects-reservas");
                 const data = await response.json();
@@ -95,8 +152,8 @@ import Layout from '../../layouts/Layout.astro';
                     const reserva = await reservaResponse.json();
 
                     if (!reservaResponse.ok) {
-                        alert(reserva.error || 'No se pudo obtener la reserva.');
-                        window.location.href = '/reservas';
+                        alert(reserva.error || "No se pudo obtener la reserva.");
+                        window.location.href = "/reservas";
                         return;
                     }
 
@@ -104,65 +161,133 @@ import Layout from '../../layouts/Layout.astro';
                     descripcionInput.value = reserva.descripcion;
                     reservaOriginal = reserva;
                     clienteSeleccionadoId = String(reserva.id_cliente);
+                    overrideManual = true;
+                    laserLargoInput.checked = Number(reserva.laser_largo) === 1;
                     renderClientes();
+                    actualizarAvisoLaser(clientePorId(clienteSeleccionadoId));
                 }
-
             } catch (error) {
                 console.error("Error al cargar clientes:", error);
             }
         });
 
         if (!reservaId) {
-            buscarClienteInput.addEventListener('input', () => {
+            buscarClienteInput.addEventListener("input", () => {
                 renderClientes(buscarClienteInput.value);
             });
         }
 
-        clienteSelect.addEventListener('change', () => {
+        clienteSelect.addEventListener("change", () => {
             clienteSeleccionadoId = clienteSelect.value;
+            overrideManual = false;
+            actualizarAvisoLaser(clientePorId(clienteSeleccionadoId));
         });
 
-        const formulario = document.getElementById('formulario');
-
-        formulario.addEventListener('submit', (event) => {
-        
+        document.getElementById("formulario").addEventListener("submit", (event) => {
             event.preventDefault();
 
-            const fecha = document.getElementById('fecha').value;
-            const descripcion = reservaId ? reservaOriginal?.descripcion : document.getElementById('descripcion').value;
-            const clienteId = reservaId ? reservaOriginal?.id_cliente : document.getElementById('cliente-id').value;
+            const fecha = fechaInput.value;
+            const descripcion = reservaId
+                ? reservaOriginal?.descripcion
+                : descripcionInput.value;
+            const clienteId = reservaId
+                ? reservaOriginal?.id_cliente
+                : clienteSelect.value;
+            const laserLargo = laserLargoInput.checked;
 
-
-            // Validar campos
-            if (fecha === '' || clienteId === '' || descripcion === '') {
-                alert('Por favor, rellena todos los campos.');
-                formulario.reset();
+            if (!fecha || !clienteId || !descripcion) {
+                alert("Por favor, rellena todos los campos.");
                 return;
             }
 
-            // Enviar datos al servidor
-            const url = "/api/reservas";
-            fetch(url, {
-                method: reservaId ? 'PUT' : 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: reservaId, fecha, descripcion, clienteId }),
+            fetch("/api/reservas", {
+                method: reservaId ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: reservaId,
+                    fecha,
+                    descripcion,
+                    clienteId,
+                    laserLargo,
+                }),
             })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Algo está mal con tu FETCH', response.status );
-                } 
-                return response.json();
-            })
-            .then((data) => {
-                formulario.reset();
-                window.location.href = '/reservas';
-            })
+                .then((response) => {
+                    if (!response.ok) throw new Error("Error al guardar");
+                    return response.json();
+                })
+                .then(() => {
+                    window.location.href = laserLargo ? "/agenda-laser" : "/reservas";
+                })
+                .catch((error) => {
+                    console.error(error);
+                    alert("No se pudo guardar la reserva.");
+                });
         });
-            
-
     </script>
 
+    <style is:global>
+        .page-agregar-reserva .aviso-laser {
+            width: 100%;
+            margin: 0.25rem 0 0.5rem;
+            padding: 0.85rem 0.95rem;
+            border-radius: 12px;
+            border: 1px solid #ddb57f;
+            background: linear-gradient(180deg, #fff8ee 0%, #fffaf3 100%);
+            text-align: left;
+        }
 
+        .page-agregar-reserva .aviso-laser strong {
+            color: #8a5a12;
+            font-size: 0.9rem;
+        }
+
+        .page-agregar-reserva .aviso-laser p {
+            margin: 0.35rem 0 0;
+            color: #5a5348;
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .page-agregar-reserva .aviso-laser-nota {
+            color: #c48a2e !important;
+        }
+
+        .page-agregar-reserva .check-laser {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            width: 100%;
+            margin: 0.35rem 0 0.5rem;
+            padding: 0.85rem 0.95rem;
+            border-radius: 12px;
+            border: 1px solid #eadfce;
+            background: #fff;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .page-agregar-reserva .check-laser input {
+            width: 18px;
+            height: 18px;
+            margin-top: 0.15rem;
+            flex-shrink: 0;
+            accent-color: #c48a2e;
+        }
+
+        .page-agregar-reserva .check-laser strong {
+            display: block;
+            color: #4d4d4d;
+            font-size: 0.92rem;
+        }
+
+        .page-agregar-reserva .check-laser small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #7a7165;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+    </style>
 </Layout>

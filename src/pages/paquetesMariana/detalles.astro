@@ -61,7 +61,35 @@ import Layout from '../../layouts/Layout.astro';
                                                 <p><span>Descripción:</span> ${paquete.descripcion.toUpperCase()}</p>
                                                 <p><span>Número de sesiones:</span> ${paquete.numero_sesiones}</p>
                                                 <p><span>Monto total:</span> ${paquete.monto_total} USD</p>
+                                                <p><span>Tipo:</span> ${
+                                                    Number(paquete.laser_grande) === 1 || paquete.laserGrandeEfectivo
+                                                        ? "LÁSER VARIAS ZONAS (cita larga)"
+                                                        : "Normal"
+                                                }</p>
+                                                <button type="button" id="btnToggleLaser" class="boton-toggle-laser">
+                                                    ${
+                                                        Number(paquete.laser_grande) === 1
+                                                            ? "Quitar marca láser grande"
+                                                            : "Marcar como láser grande"
+                                                    }
+                                                </button>
                                             `;
+
+                    const btnToggle = document.getElementById("btnToggleLaser");
+                    btnToggle?.addEventListener("click", async () => {
+                        const nuevo = Number(paquete.laser_grande) === 1 ? 0 : 1;
+                        const res = await fetch("/api/paquetesMariana/detalles-paquetes", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: idPaqueteSeleccionado, laserGrande: nuevo }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            alert(data.error || "No se pudo actualizar.");
+                            return;
+                        }
+                        window.location.reload();
+                    });
                 });
 
 
@@ -88,6 +116,7 @@ import Layout from '../../layouts/Layout.astro';
                 }
 
                 const tabla = document.createElement("table");
+                tabla.className = "sp-table";
                 tabla.innerHTML = `
                     <thead>
                         <tr>
@@ -200,6 +229,20 @@ import Layout from '../../layouts/Layout.astro';
             .mensaje {
                 text-align: center;
                 margin-top: 1rem;
+            }
+
+            .boton-toggle-laser {
+                margin-top: 0.75rem;
+                background: #ddb57f;
+                color: #4d4d4d;
+                border: none;
+                border-radius: 10px;
+                padding: 0.5rem 0.85rem;
+                font-weight: 800;
+                cursor: pointer;
+                width: auto;
+                min-width: 0;
+                height: auto;
             }
 
 

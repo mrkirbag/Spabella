@@ -1,8 +1,14 @@
 import { createClient } from "@libsql/client";
+import {
+    ensureReservasColumns,
+    normalizarLaserLargo,
+} from "../../../lib/reservas-schema.js";
 
-const db = createClient({   url: import.meta.env.DATABASE_URL,
-                            authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
-                        });
+const dbClient = () =>
+    createClient({
+        url: import.meta.env.DATABASE_URL,
+        authToken: import.meta.env.DATABASE_AUTH_TOKEN,
+    });
 
 export async function GET({ request }) {
     try {
@@ -10,59 +16,117 @@ export async function GET({ request }) {
         const id = url.searchParams.get("id");
 
         if (!id) {
-            return new Response(JSON.stringify({ error: "El id de la reserva es obligatorio" }), { status: 400 });
+            return new Response(
+                JSON.stringify({ error: "El id de la reserva es obligatorio" }),
+                { status: 400 }
+            );
         }
 
+        const db = dbClient();
+        await ensureReservasColumns(db);
+
         const reserva = await db.execute(
-            "SELECT id, fecha, descripcion, id_cliente FROM reservas WHERE id = ?",
+            `SELECT id, fecha, descripcion, id_cliente, COALESCE(laser_largo, 0) AS laser_largo
+             FROM reservas WHERE id = ?`,
             [id]
         );
 
         if (!reserva.rows || reserva.rows.length === 0) {
-            return new Response(JSON.stringify({ error: "Reserva no encontrada" }), { status: 404 });
+            return new Response(
+                JSON.stringify({ error: "Reserva no encontrada" }),
+                { status: 404 }
+            );
         }
 
         return new Response(JSON.stringify(reserva.rows[0]), { status: 200 });
-
     } catch (error) {
         console.error("Error obteniendo reserva:", error);
-        return new Response(JSON.stringify({ error: "Error interno del servidor" }), { status: 500 });
+        return new Response(
+            JSON.stringify({ error: "Error interno del servidor" }),
+            { status: 500 }
+        );
     }
 }
 
 export async function POST({ request }) {
     try {
+        const { fecha, descripcion, clienteId, laserLargo } = await request.json();
+        const laser = normalizarLaserLargo(laserLargo);
 
-        const { fecha, descripcion, clienteId } = await request.json();
+        if (!fecha || !descripcion || !clienteId) {
+            return new Response(
+                JSON.stringify({ error: "Todos los campos son obligatorios" }),
+                { status: 400 }
+            );
+        }
 
-        await db.execute("INSERT INTO reservas (fecha, descripcion, id_cliente) VALUES (?, ?, ?)", [fecha, descripcion, clienteId]);
+        const db = dbClient();
+        await ensureReservasColumns(db);
 
-        return new Response(JSON.stringify({ message: "Reserva agregado exitosamente" }), { status: 200 });
-    
+        await db.execute(
+            `INSERT INTO reservas (fecha, descripcion, id_cliente, laser_largo)
+             VALUES (?, ?, ?, ?)`,
+            [fecha, descripcion, clienteId, laser]
+        );
+
+        return new Response(
+            JSON.stringify({
+                message: "Reserva agregada exitosamente",
+                laserLargo: laser,
+            }),
+            { status: 200 }
+        );
     } catch (error) {
         console.error("Error agregando reserva:", error);
-        return new Response(JSON.stringify({ error: "Error interno del servidor" }), { status: 500 });
+        return new Response(
+            JSON.stringify({ error: "Error interno del servidor" }),
+            { status: 500 }
+        );
     }
 }
 
 export async function PUT({ request }) {
     try {
-
-        const { id, fecha, descripcion, clienteId } = await request.json();
+        const { id, fecha, descripcion, clienteId, laserLargo } = await request.json();
 
         if (!id || !fecha || !descripcion || !clienteId) {
-            return new Response(JSON.stringify({ error: "Todos los campos son obligatorios" }), { status: 400 });
+            return new Response(
+                JSON.stringify({ error: "Todos los campos son obligatorios" }),
+                { status: 400 }
+            );
         }
 
-        await db.execute(
-            "UPDATE reservas SET fecha = ?, descripcion = ?, id_cliente = ? WHERE id = ?",
-            [fecha, descripcion, clienteId, id]
-        );
+        const db = dbClient();
+        await ensureReservasColumns(db);
 
-        return new Response(JSON.stringify({ message: "Reserva reprogramada exitosamente" }), { status: 200 });
-    
+        const laser =
+            laserLargo === undefined || laserLargo === null
+                ? null
+                : normalizarLaserLargo(laserLargo);
+
+        if (laser === null) {
+            await db.execute(
+                `UPDATE reservas SET fecha = ?, descripcion = ?, id_cliente = ? WHERE id = ?`,
+                [fecha, descripcion, clienteId, id]
+            );
+        } else {
+            await db.execute(
+                `UPDATE reservas
+                 SET fecha = ?, descripcion = ?, id_cliente = ?, laser_largo = ?
+                 WHERE id = ?`,
+                [fecha, descripcion, clienteId, laser, id]
+            );
+        }
+
+        return new Response(
+            JSON.stringify({ message: "Reserva reprogramada exitosamente" }),
+            { status: 200 }
+        );
     } catch (error) {
         console.error("Error reprogramando reserva:", error);
-        return new Response(JSON.stringify({ error: "Error interno del servidor" }), { status: 500 });
+        return new Response(
+            JSON.stringify({ error: "Error interno del servidor" }),
+            { status: 500 }
+        );
     }
 }

@@ -1,39 +1,71 @@
 import { createClient } from "@libsql/client";
+import {
+    ensureTasasTable,
+    ensureValesTable,
+    ensureVentasColumns,
+    ensureVentaPagosTable,
+    getTasas,
+} from "../../lib/ventas-schema.js";
 
-const ensureTasasTable = async (db) => {
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS tasas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL UNIQUE,
-            value REAL NOT NULL DEFAULT 0
-        )
-    `);
+const redondear = (valor) => Number(Number(valor || 0).toFixed(2));
 
-    await db.execute(
-        "INSERT OR IGNORE INTO tasas (nombre, value) VALUES ('bs', 0)"
-    );
+const vacioMonedas = () => ({ usd: 0, cop: 0, bs: 0 });
+
+const sumarMonedas = (destino, origen) => {
+    destino.usd += Number(origen.usd || 0);
+    destino.cop += Number(origen.cop || 0);
+    destino.bs += Number(origen.bs || 0);
 };
 
-const ensureVentasColumns = async (db) => {
-    const columns = await db.execute("PRAGMA table_info(ventas)");
-    const columnNames = new Set((columns.rows || []).map((row) => String(row.name).toLowerCase()));
+const fijarMonedas = (obj) => ({
+    usd: redondear(obj.usd),
+    cop: redondear(obj.cop),
+    bs: redondear(obj.bs),
+});
 
-    if (!columnNames.has("monto_usd")) {
-        await db.execute("ALTER TABLE ventas ADD COLUMN monto_usd REAL NOT NULL DEFAULT 0");
+const pagosDesdeVentaLegacy = (venta, tasas) => {
+    const pagos = [];
+    const montoUsd = Number(venta.monto_usd ?? 0);
+    const montoCop = Number(venta.monto_cop_raw ?? 0);
+    const montoBs =
+        Number(venta.monto_bs_raw ?? 0) > 0
+            ? Number(venta.monto_bs_raw)
+            : Number(venta.tasa_bs_venta || tasas.bs) > 0
+              ? Number(venta.monto_bs_usd ?? 0) * Number(venta.tasa_bs_venta || tasas.bs)
+              : 0;
+
+    if (montoUsd > 0) {
+        pagos.push({
+            moneda: "USD",
+            monto: montoUsd,
+            metodo_pago: venta.metodo_pago_usd || "Sin metodo",
+        });
     }
-
-    if (!columnNames.has("monto_bs")) {
-        await db.execute("ALTER TABLE ventas ADD COLUMN monto_bs REAL NOT NULL DEFAULT 0");
+    if (montoCop > 0) {
+        pagos.push({
+            moneda: "COP",
+            monto: montoCop,
+            metodo_pago: venta.metodo_pago_cop || "Sin metodo",
+        });
     }
+    if (montoBs > 0) {
+        pagos.push({
+            moneda: "BS",
+            monto: montoBs,
+            metodo_pago: venta.metodo_pago_bs || "Sin metodo",
+        });
+    }
+    return pagos;
+};
 
-    await db.execute(`
-        UPDATE ventas
-        SET monto_usd = monto,
-            monto_bs = 0
-        WHERE COALESCE(monto_usd, 0) = 0
-          AND COALESCE(monto_bs, 0) = 0
-          AND COALESCE(monto, 0) > 0
-    `);
+const acumularCaja = (mapa, metodo, moneda, monto) => {
+    const clave = String(metodo || "Sin metodo").trim() || "Sin metodo";
+    if (!mapa[clave]) {
+        mapa[clave] = { metodo: clave, ...vacioMonedas() };
+    }
+    if (moneda === "USD") mapa[clave].usd += monto;
+    if (moneda === "COP") mapa[clave].cop += monto;
+    if (moneda === "BS") mapa[clave].bs += monto;
 };
 
 export async function GET({ request }) {
@@ -41,96 +73,277 @@ export async function GET({ request }) {
     const fechaDesde = url.searchParams.get("desde");
     const fechaHasta = url.searchParams.get("hasta");
 
-    const db = createClient({   
+    const db = createClient({
         url: import.meta.env.DATABASE_URL,
-        authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
+        authToken: import.meta.env.DATABASE_AUTH_TOKEN,
     });
 
     await ensureTasasTable(db);
     await ensureVentasColumns(db);
+    await ensureVentaPagosTable(db);
+    await ensureValesTable(db);
 
-    const tasaResponse = await db.execute(
-        "SELECT value FROM tasas WHERE LOWER(nombre) = 'bs' LIMIT 1"
-    );
-    const tasaBs = Number(tasaResponse.rows?.[0]?.value ?? 0);
+    const tasas = await getTasas(db);
 
-    const datos = await db.execute(`
-        SELECT v.fecha, s.porcentaje_empleado, s.porcentaje_spabella,
-        v.descripcion, e.nombre AS empleada, v.monto,
-        COALESCE(v.monto_usd, v.monto) AS monto_usd,
-        COALESCE(v.monto_bs, 0) AS monto_bs_usd
+    const datos = await db.execute(
+        `
+        SELECT
+            v.id,
+            v.fecha,
+            s.porcentaje_empleado,
+            s.porcentaje_spabella,
+            v.descripcion,
+            e.nombre AS empleada,
+            v.monto,
+            COALESCE(v.monto_usd, v.monto) AS monto_usd,
+            COALESCE(v.monto_bs, 0) AS monto_bs_usd,
+            COALESCE(v.monto_cop, 0) AS monto_cop_usd,
+            COALESCE(v.monto_bs_raw, 0) AS monto_bs_raw,
+            COALESCE(v.monto_cop_raw, 0) AS monto_cop_raw,
+            COALESCE(v.tasa_bs, 0) AS tasa_bs_venta,
+            COALESCE(v.tasa_cop, 0) AS tasa_cop_venta,
+            COALESCE(v.metodo_pago_usd, '') AS metodo_pago_usd,
+            COALESCE(v.metodo_pago_bs, '') AS metodo_pago_bs,
+            COALESCE(v.metodo_pago_cop, '') AS metodo_pago_cop
         FROM ventas v
         JOIN empleados e ON v.empleado_id = e.id
         JOIN servicios s ON v.servicio_id = s.id
         WHERE v.fecha BETWEEN ? AND ?
-        ORDER BY e.nombre, v.fecha
-    `, [fechaDesde, fechaHasta]);
+        ORDER BY e.nombre, v.fecha, v.id
+        `,
+        [fechaDesde, fechaHasta]
+    );
 
-    // Si no hay registros, mostrar mensaje de error
-    if (!datos.rows || datos.rows.length === 0) {
-        return new Response(JSON.stringify({ mensaje: "No hay registros en este rango de fechas." }), {
-            headers: { "Content-Type": "application/json" }
+    const ids = (datos.rows || []).map((venta) => venta.id);
+    const pagosPorVenta = {};
+
+    if (ids.length) {
+        const placeholders = ids.map(() => "?").join(",");
+        const pagosResponse = await db.execute(
+            `SELECT venta_id, moneda, monto, monto_usd, metodo_pago, tasa
+             FROM venta_pagos
+             WHERE venta_id IN (${placeholders})
+             ORDER BY id ASC`,
+            ids
+        );
+
+        (pagosResponse.rows || []).forEach((pago) => {
+            if (!pagosPorVenta[pago.venta_id]) pagosPorVenta[pago.venta_id] = [];
+            pagosPorVenta[pago.venta_id].push({
+                moneda: String(pago.moneda || "").toUpperCase(),
+                monto: Number(pago.monto ?? 0),
+                metodo_pago: String(pago.metodo_pago || "Sin metodo"),
+            });
         });
     }
 
-    // Agrupar los datos por empleada y calcular los totales en USD y BS
     const facturacion = {};
-    datos.rows.forEach(venta => {
+    const totalesGenerales = {
+        empleado: vacioMonedas(),
+        spa: vacioMonedas(),
+        caja: vacioMonedas(),
+    };
+    const cajaPorMetodo = {};
+
+    datos.rows?.forEach((venta) => {
         const porcentajeEmpleado = Number(venta.porcentaje_empleado ?? 0);
         const porcentajeSpa = Number(venta.porcentaje_spabella ?? 0);
-        const servicioLabel = `SPA ${porcentajeSpa}% / EMPLEADA ${porcentajeEmpleado}%`;
+        const pagos =
+            pagosPorVenta[venta.id]?.length > 0
+                ? pagosPorVenta[venta.id]
+                : pagosDesdeVentaLegacy(venta, tasas);
 
-        const montoTotalUsd = Number(venta.monto ?? 0);
-        const montoTotalBs = tasaBs > 0 ? (montoTotalUsd * tasaBs) : 0;
-        const montoUsd = Number(venta.monto_usd ?? 0);
-        const montoBsUsd = Number(venta.monto_bs_usd ?? 0);
-        const pagoClienteUsd = montoUsd;
-        const pagoClienteBs = tasaBs > 0 ? (montoBsUsd * tasaBs) : 0;
+        const producido = vacioMonedas();
+        const empleado = vacioMonedas();
+        const spa = vacioMonedas();
 
-        const montoEmpleadoUsd = (montoUsd * porcentajeEmpleado) / 100;
-        const montoEmpleadoBs = tasaBs > 0 ? ((montoBsUsd * porcentajeEmpleado) / 100) * tasaBs : 0;
+        pagos.forEach((pago) => {
+            const moneda = String(pago.moneda || "").toUpperCase();
+            const monto = Number(pago.monto ?? 0);
+            if (monto <= 0) return;
 
-        const montoSpaUsd = (montoUsd * porcentajeSpa) / 100;
-        const montoSpaBs = tasaBs > 0 ? ((montoBsUsd * porcentajeSpa) / 100) * tasaBs : 0;
+            if (moneda === "USD") producido.usd += monto;
+            if (moneda === "COP") producido.cop += monto;
+            if (moneda === "BS") producido.bs += monto;
+
+            const parteEmpleado = (monto * porcentajeEmpleado) / 100;
+            const parteSpa = (monto * porcentajeSpa) / 100;
+
+            if (moneda === "USD") {
+                empleado.usd += parteEmpleado;
+                spa.usd += parteSpa;
+            }
+            if (moneda === "COP") {
+                empleado.cop += parteEmpleado;
+                spa.cop += parteSpa;
+            }
+            if (moneda === "BS") {
+                empleado.bs += parteEmpleado;
+                spa.bs += parteSpa;
+            }
+
+            acumularCaja(cajaPorMetodo, pago.metodo_pago, moneda, monto);
+            if (moneda === "USD") totalesGenerales.caja.usd += monto;
+            if (moneda === "COP") totalesGenerales.caja.cop += monto;
+            if (moneda === "BS") totalesGenerales.caja.bs += monto;
+        });
 
         if (!facturacion[venta.empleada]) {
-            facturacion[venta.empleada] = { 
-                nombre: venta.empleada, 
-                tasaBs,
-                totalEmpleadoUsd: 0,
-                totalEmpleadoBs: 0,
-                totalSpaUsd: 0,
-                totalSpaBs: 0,
-                servicios: [] 
+            facturacion[venta.empleada] = {
+                nombre: venta.empleada,
+                totales: {
+                    producido: vacioMonedas(),
+                    empleado: vacioMonedas(),
+                    spa: vacioMonedas(),
+                    vales: vacioMonedas(),
+                    aPagar: vacioMonedas(),
+                },
+                servicios: [],
+                vales: [],
             };
         }
-        
-        facturacion[venta.empleada].totalEmpleadoUsd += montoEmpleadoUsd;
-        facturacion[venta.empleada].totalEmpleadoBs += montoEmpleadoBs;
-        facturacion[venta.empleada].totalSpaUsd += montoSpaUsd;
-        facturacion[venta.empleada].totalSpaBs += montoSpaBs;
-        
+
+        sumarMonedas(facturacion[venta.empleada].totales.producido, producido);
+        sumarMonedas(facturacion[venta.empleada].totales.empleado, empleado);
+        sumarMonedas(facturacion[venta.empleada].totales.spa, spa);
+        sumarMonedas(totalesGenerales.empleado, empleado);
+        sumarMonedas(totalesGenerales.spa, spa);
+
         facturacion[venta.empleada].servicios.push({
             fecha: venta.fecha,
-            servicio: servicioLabel,
             descripcion: venta.descripcion,
             porcentajeEmpleado,
             porcentajeSpa,
-            montoTotalUsd: Number(montoTotalUsd.toFixed(2)),
-            montoTotalBs: Number(montoTotalBs.toFixed(2)),
-            pagoClienteUsd: Number(pagoClienteUsd.toFixed(2)),
-            pagoClienteBs: Number(pagoClienteBs.toFixed(2)),
-            montoEmpleadoUsd: Number(montoEmpleadoUsd.toFixed(2)),
-            montoEmpleadoBs: Number(montoEmpleadoBs.toFixed(2)),
-            montoSpaUsd: Number(montoSpaUsd.toFixed(2)),
-            montoSpaBs: Number(montoSpaBs.toFixed(2))
+            montoTotalUsd: redondear(venta.monto),
+            pagos: pagos.map((pago) => ({
+                moneda: pago.moneda,
+                monto: redondear(pago.monto),
+                metodo: pago.metodo_pago,
+            })),
+            producido: fijarMonedas(producido),
+            empleado: fijarMonedas(empleado),
+            spa: fijarMonedas(spa),
         });
     });
 
-    return new Response(JSON.stringify(Object.values(facturacion)), {
-        headers: { "Content-Type": "application/json" }
-    });
-}
+    const valesResponse = await db.execute(
+        `
+        SELECT
+            v.id,
+            v.fecha,
+            e.nombre AS empleada,
+            v.moneda,
+            v.monto,
+            v.metodo_pago,
+            v.nota
+        FROM vales v
+        JOIN empleados e ON v.empleado_id = e.id
+        WHERE v.fecha BETWEEN ? AND ?
+        ORDER BY e.nombre, v.fecha, v.id
+        `,
+        [fechaDesde, fechaHasta]
+    );
 
-// RESET DE IDS
-// DELETE FROM sqlite_sequence WHERE name='ventas';
+    const totalesVales = vacioMonedas();
+
+    (valesResponse.rows || []).forEach((vale) => {
+        const moneda = String(vale.moneda || "").toUpperCase();
+        const monto = Number(vale.monto ?? 0);
+        if (monto <= 0) return;
+
+        if (!facturacion[vale.empleada]) {
+            facturacion[vale.empleada] = {
+                nombre: vale.empleada,
+                totales: {
+                    producido: vacioMonedas(),
+                    empleado: vacioMonedas(),
+                    spa: vacioMonedas(),
+                    vales: vacioMonedas(),
+                    aPagar: vacioMonedas(),
+                },
+                servicios: [],
+                vales: [],
+            };
+        }
+
+        if (moneda === "USD") {
+            facturacion[vale.empleada].totales.vales.usd += monto;
+            totalesVales.usd += monto;
+        }
+        if (moneda === "COP") {
+            facturacion[vale.empleada].totales.vales.cop += monto;
+            totalesVales.cop += monto;
+        }
+        if (moneda === "BS") {
+            facturacion[vale.empleada].totales.vales.bs += monto;
+            totalesVales.bs += monto;
+        }
+
+        facturacion[vale.empleada].vales.push({
+            fecha: vale.fecha,
+            monto: redondear(monto),
+            moneda,
+            metodo: vale.metodo_pago || "Sin metodo",
+            nota: vale.nota || "",
+        });
+    });
+
+    const empleadas = Object.values(facturacion).map((empleada) => {
+        const aPagar = {
+            usd: Number(empleada.totales.empleado.usd || 0) - Number(empleada.totales.vales.usd || 0),
+            cop: Number(empleada.totales.empleado.cop || 0) - Number(empleada.totales.vales.cop || 0),
+            bs: Number(empleada.totales.empleado.bs || 0) - Number(empleada.totales.vales.bs || 0),
+        };
+
+        return {
+            ...empleada,
+            totales: {
+                producido: fijarMonedas(empleada.totales.producido),
+                empleado: fijarMonedas(empleada.totales.empleado),
+                spa: fijarMonedas(empleada.totales.spa),
+                vales: fijarMonedas(empleada.totales.vales),
+                aPagar: fijarMonedas(aPagar),
+            },
+        };
+    });
+
+    const aPagarGeneral = {
+        usd: Number(totalesGenerales.empleado.usd || 0) - Number(totalesVales.usd || 0),
+        cop: Number(totalesGenerales.empleado.cop || 0) - Number(totalesVales.cop || 0),
+        bs: Number(totalesGenerales.empleado.bs || 0) - Number(totalesVales.bs || 0),
+    };
+
+    if (!empleadas.length) {
+        return new Response(
+            JSON.stringify({
+                mensaje: "No hay registros en este rango de fechas.",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    return new Response(
+        JSON.stringify({
+            empleadas,
+            totalesGenerales: {
+                empleado: fijarMonedas(totalesGenerales.empleado),
+                spa: fijarMonedas(totalesGenerales.spa),
+                caja: fijarMonedas(totalesGenerales.caja),
+                vales: fijarMonedas(totalesVales),
+                aPagar: fijarMonedas(aPagarGeneral),
+                porMetodo: Object.values(cajaPorMetodo)
+                    .map((item) => ({
+                        metodo: item.metodo,
+                        usd: redondear(item.usd),
+                        cop: redondear(item.cop),
+                        bs: redondear(item.bs),
+                    }))
+                    .sort((a, b) => a.metodo.localeCompare(b.metodo, "es")),
+            },
+            tasas,
+            totalVentas: (datos.rows || []).length,
+            totalVales: (valesResponse.rows || []).length,
+        }),
+        { headers: { "Content-Type": "application/json" } }
+    );
+}

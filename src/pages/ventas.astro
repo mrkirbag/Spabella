@@ -3,321 +3,257 @@ import Layout from '../layouts/Layout.astro';
 
     const fechaHoy = new Date();
     const ano = fechaHoy.getFullYear();
-    const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0'); 
+    const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0');
     const dia = String(fechaHoy.getDate()).padStart(2, '0');
     let fechaCompleta = `${ano}-${mes}-${dia}`;
 ---
 
-
 <Layout>
-
     <main class="container-general">
-        <h1>LISTA DE VENTAS</h1> 
+        <h1>LISTA DE VENTAS</h1>
 
         <div class="modulo-busqueda">
             <div class="campo-busqueda">
                 <label for="fechaSeleccionada">Fecha</label>
                 <input type="date" id="fechaSeleccionada" value={fechaCompleta} />
             </div>
-            <button id="buscarVentas">Buscar Ventas</button>
+            <button id="buscarVentas" type="button">Buscar Ventas</button>
         </div>
 
-        <table id="listaVentas"></table>
+        <section id="resumenCaja" class="sp-panel" hidden></section>
+
+        <section id="panelVentas" class="sp-panel" hidden>
+            <div class="sp-panel-header">
+                <div>
+                    <p class="sp-eyebrow">Movimientos</p>
+                    <h2>Ventas del día</h2>
+                </div>
+                <span id="contadorVentas" class="sp-chip"></span>
+            </div>
+            <table id="listaVentas" class="sp-table"></table>
+        </section>
+
+        <p id="mensajeVacio" class="sp-msg-empty sp-panel" hidden style="padding:1.1rem;"></p>
 
         <div class="container-boton_agregar">
             <a href="/ventas/agregar-ventas" class="boton-agregar">Agregar Venta</a>
         </div>
-
     </main>
 
     <script type="module">
-
         const formatearMonto = (monto) => Number(monto || 0).toFixed(2);
 
         const button = document.getElementById("buscarVentas");
+        const resumenCaja = document.getElementById("resumenCaja");
+        const panelVentas = document.getElementById("panelVentas");
+        const mensajeVacio = document.getElementById("mensajeVacio");
+        const contadorVentas = document.getElementById("contadorVentas");
+
+        const colorMoneda = (moneda) => {
+            if (moneda === "USD") return "sp-money-usd";
+            if (moneda === "COP") return "sp-money-cop";
+            return "sp-money-bs";
+        };
+
+        const renderPagos = (pagos = []) => {
+            if (!pagos.length) return `<span style="color:#c0b6a8;font-weight:700;">—</span>`;
+            return `
+                <div class="sp-money">
+                    ${pagos.map((pago) => `
+                        <div class="sp-money-item ${colorMoneda(pago.moneda)}">
+                            <strong>${formatearMonto(pago.monto)}</strong>
+                            <span>${pago.moneda}</span>
+                        </div>
+                        <span class="sp-money-meta">${pago.metodo_pago || "Sin método"}</span>
+                    `).join("")}
+                </div>
+            `;
+        };
+
+        const renderResumenCaja = (caja, tasas) => {
+            if (!caja) {
+                resumenCaja.hidden = true;
+                resumenCaja.innerHTML = "";
+                return;
+            }
+
+            const metodosRows = (caja.porMetodo || [])
+                .map((item) => `
+                    <tr>
+                        <td><strong>${item.clave}</strong></td>
+                        <td class="sp-num sp-usd">${item.usd > 0 ? formatearMonto(item.usd) : "—"}</td>
+                        <td class="sp-num sp-cop">${item.cop > 0 ? formatearMonto(item.cop) : "—"}</td>
+                        <td class="sp-num sp-bs">${item.bs > 0 ? formatearMonto(item.bs) : "—"}</td>
+                    </tr>
+                `)
+                .join("");
+
+            resumenCaja.hidden = false;
+            resumenCaja.innerHTML = `
+                <div class="sp-panel-header">
+                    <div>
+                        <p class="sp-eyebrow">Resumen de caja</p>
+                        <h2>Totales del día</h2>
+                    </div>
+                    <span class="sp-chip">BS ${tasas.bs > 0 ? formatearMonto(tasas.bs) : "N/D"} · COP ${tasas.cop > 0 ? formatearMonto(tasas.cop) : "N/D"}</span>
+                </div>
+                <div class="sp-totales">
+                    <div class="sp-total sp-total-usd">
+                        <span>Entró en USD</span>
+                        <strong>${formatearMonto(caja.totalUsd)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-cop">
+                        <span>Entró en COP</span>
+                        <strong>${formatearMonto(caja.totalCop)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-bs">
+                        <span>Entró en BS</span>
+                        <strong>${formatearMonto(caja.totalBs)}</strong>
+                    </div>
+                </div>
+                <div class="sp-panel-body">
+                    <h3 class="sp-subtitle">Por método de pago</h3>
+                    <table class="sp-table">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th>USD</th>
+                                <th>COP</th>
+                                <th>BS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${metodosRows || `<tr><td colspan="4" class="sp-empty">Sin pagos registrados.</td></tr>`}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total</td>
+                                <td class="sp-num sp-usd">${formatearMonto(caja.totalUsd)}</td>
+                                <td class="sp-num sp-cop">${formatearMonto(caja.totalCop)}</td>
+                                <td class="sp-num sp-bs">${formatearMonto(caja.totalBs)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        };
 
         const cargarVentas = async () => {
             const fecha = document.getElementById("fechaSeleccionada").value;
-
             const response = await fetch(`/api/ventas/vista-ventas?fecha=${fecha}`);
             const data = await response.json();
             const ventas = data.ventas || [];
-            const tasaBs = Number(data.tasaBs ?? 0);
-
+            const tasas = {
+                bs: Number(data.tasas?.bs ?? data.tasaBs ?? 0),
+                cop: Number(data.tasas?.cop ?? data.tasaCop ?? 0),
+            };
             const tablaVentas = document.getElementById("listaVentas");
             tablaVentas.innerHTML = "";
 
             if (data.mensaje) {
-                tablaVentas.innerHTML = `
-                    <tbody>
-                        <tr>
-                            <td colspan="6" style="color: red; text-align: center;">${data.mensaje}</td>
-                        </tr>
-                    </tbody>
-                `;
+                renderResumenCaja(null, tasas);
+                panelVentas.hidden = true;
+                mensajeVacio.hidden = false;
+                mensajeVacio.textContent = data.mensaje;
                 return;
             }
 
-            tablaVentas.classList.add('tabla-ventas');
+            mensajeVacio.hidden = true;
+            panelVentas.hidden = false;
+            contadorVentas.textContent = `${ventas.length} venta${ventas.length === 1 ? "" : "s"}`;
+            renderResumenCaja(data.caja, tasas);
 
-            const thead = document.createElement("thead");
-            thead.innerHTML = `
-                <tr class="fila-resumen-ventas">
-                    <th colspan="6">
-                        <div class="resumen-ventas-wrap">
-                            <span class="resumen-ventas-titulo">VENTAS DEL DIA</span><br>
-                            <span class="resumen-ventas-chip">TASA BS: ${tasaBs > 0 ? formatearMonto(tasaBs) : 'NO CONFIGURADA'}</span>
-                        </div>
-                    </th>
-                </tr>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Reparto</th>  
-                    <th>Total USD</th>
-                    <th>Pago Cliente</th>
-                    <th>Empleado</th>
-                    <th>Acciones</th>
-                </tr>
+            tablaVentas.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Total</th>
+                        <th>Pagos</th>
+                        <th>Empleado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
             `;
-            tablaVentas.appendChild(thead);
 
-            const tbody = document.createElement("tbody");
+            const tbody = tablaVentas.querySelector("tbody");
 
-            ventas.forEach((venta) => {
-                const fechaObjeto = new Date(venta.fecha + "T00:00:00");
-                const opcionesFormato = { day: "2-digit", month: "2-digit", year: "numeric" };
-                const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", opcionesFormato);
-
-                const pagoClienteUsd = Number(venta.monto_usd ?? 0);
-                const pagoClienteBs = tasaBs > 0
-                    ? Number((Number(venta.monto_bs_usd ?? 0) * tasaBs).toFixed(2))
-                    : 0;
+            ventas.forEach((venta, index) => {
+                const fechaFormateada = new Date(venta.fecha + "T00:00:00").toLocaleDateString("es-ES", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                });
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td class="col-fecha">${fechaFormateada}</td>
-                    <td class="col-servicio">
-                        <span class="servicio-nombre">SPA ${formatearMonto(venta.porcentaje_spabella)}% / EMPLEADO ${formatearMonto(venta.porcentaje_empleado)}%</span><br>
-                        <span class="servicio-descripcion">${venta.descripcion}</span>
+                    <td>${index + 1}</td>
+                    <td>${fechaFormateada}</td>
+                    <td class="sp-desc">
+                        <strong>${venta.descripcion}</strong>
+                        <small>SPA ${formatearMonto(venta.porcentaje_spabella)}% / Emp. ${formatearMonto(venta.porcentaje_empleado)}%</small>
                     </td>
-                    <td class="col-total">${formatearMonto(venta.monto)} USD</td>
-                    <td class="col-pago-cliente">
-                        <div class="moneda-linea moneda-usd">
-                            <span class="moneda-tag">USD</span>
-                            <span class="moneda-valor">${formatearMonto(pagoClienteUsd)}</span>
-                        </div>
-                        <div class="moneda-linea moneda-bs">
-                            <span class="moneda-tag">BS</span>
-                            <span class="moneda-valor">${formatearMonto(pagoClienteBs)}</span>
-                        </div>
-                    </td>
-                    <td class="col-empleado">${venta.empleado.toUpperCase()}</td>
-                    <td>
+                    <td class="sp-num">${formatearMonto(venta.monto)} USD</td>
+                    <td>${renderPagos(venta.pagos || [])}</td>
+                    <td>${venta.empleado}</td>
+                    <td class="sp-actions">
                         <button type="button" class="boton-eliminar-venta" data-id="${venta.id}">Eliminar</button>
                     </td>
                 `;
-
                 tbody.appendChild(tr);
             });
 
-            tablaVentas.appendChild(tbody);
-
-            document.querySelectorAll('.boton-eliminar-venta').forEach((btn) => {
-                btn.addEventListener('click', async () => {
+            document.querySelectorAll(".boton-eliminar-venta").forEach((btn) => {
+                btn.addEventListener("click", async () => {
                     const ventaId = Number(btn.dataset.id);
-                    const confirmar = window.confirm('Esta accion eliminara la venta. Deseas continuar?');
-
-                    if (!confirmar) return;
-
-                    const claveAdmin = window.prompt('Ingresa la clave admin para eliminar esta venta:');
-
+                    if (!window.confirm("Esta accion eliminara la venta. Deseas continuar?")) return;
+                    const claveAdmin = window.prompt("Ingresa la clave admin para eliminar esta venta:");
                     if (!claveAdmin) {
-                        alert('La clave admin es obligatoria.');
+                        alert("La clave admin es obligatoria.");
                         return;
                     }
 
                     try {
-                        const deleteResponse = await fetch('/api/ventas/delete', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: ventaId, claveAdmin })
+                        const deleteResponse = await fetch("/api/ventas/delete", {
+                            method: "DELETE",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: ventaId, claveAdmin }),
                         });
-
                         const deleteData = await deleteResponse.json();
-
                         if (!deleteResponse.ok) {
-                            alert(deleteData.error || 'No se pudo eliminar la venta.');
+                            alert(deleteData.error || "No se pudo eliminar la venta.");
                             return;
                         }
-
-                        alert(deleteData.message || 'Venta eliminada exitosamente.');
+                        alert(deleteData.message || "Venta eliminada exitosamente.");
                         await cargarVentas();
                     } catch (error) {
-                        console.error('Error eliminando venta:', error);
-                        alert('Ocurrio un error eliminando la venta.');
+                        console.error("Error eliminando venta:", error);
+                        alert("Ocurrio un error eliminando la venta.");
                     }
                 });
             });
         };
 
         button.addEventListener("click", cargarVentas);
-        document.addEventListener('DOMContentLoaded', cargarVentas);
+        document.addEventListener("DOMContentLoaded", cargarVentas);
     </script>
 
-    <style>
-        .tabla-ventas {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            overflow: hidden;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.78);
-            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
+    <style is:global>
+        .sp-total-cop {
+            background: #f7f0e4;
+            color: #8a5a12;
+            border-left: 5px solid #c48a2e;
         }
 
-        .tabla-ventas th,
-        .tabla-ventas td {
-            padding: 0.7rem 0.85rem;
-            border-bottom: 1px solid #ece8e2;
-            font-size: 0.88rem;
-            vertical-align: top;
+        .sp-money-cop {
+            background: #f7f0e4;
+            color: #8a5a12;
         }
 
-        .tabla-ventas thead .fila-resumen-ventas th {
-            background: linear-gradient(135deg, #4D4D4D 0%, #686868 100%);
-            color: #ffffff;
-            text-transform: uppercase;
-        }
-
-        .resumen-ventas-wrap {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.7rem;
-            flex-wrap: wrap;
-        }
-
-        .resumen-ventas-titulo {
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            font-size: 0.82rem;
-        }
-
-        .resumen-ventas-chip {
-            background: rgba(255, 255, 255, 0.16);
-            border-radius: 999px;
-            padding: 0.15rem 0.45rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-        }
-
-        .tabla-ventas thead tr:last-child th {
-            background: #f6efe3;
-            color: #3a3a3a;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.035em;
-        }
-
-        .tabla-ventas tbody tr:nth-child(even) {
-            background: rgba(247, 241, 232, 0.35);
-        }
-
-        .tabla-ventas .col-fecha,
-        .tabla-ventas .col-empleado,
-        .tabla-ventas .col-total {
-            white-space: nowrap;
-            font-weight: 600;
-            color: #4D4D4D;
-        }
-
-        .tabla-ventas .col-servicio {
-            max-width: 290px;
-            white-space: normal;
-        }
-
-        .tabla-ventas .servicio-nombre {
-            display: block;
-            font-weight: 700;
-            margin-bottom: 0.2rem;
-            color: #4D4D4D;
-        }
-
-        .tabla-ventas .servicio-descripcion {
-            display: block;
-            font-size: 0.76rem;
-            color: #5a5a5a;
-            line-height: 1.3;
-        }
-
-        .tabla-ventas .col-pago-cliente {
-            min-width: 170px;
-        }
-
-        .tabla-ventas .moneda-linea {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.45rem;
-            border-radius: 999px;
-            padding: 0.14rem 0.42rem;
-            margin-bottom: 0.26rem;
-            line-height: 1.15;
-        }
-
-        .tabla-ventas .moneda-linea:last-child {
-            margin-bottom: 0;
-        }
-
-        .tabla-ventas .moneda-tag {
-            display: inline-block;
-            min-width: 34px;
-            text-align: center;
-            border-radius: 999px;
-            padding: 0.1rem 0.35rem;
-            font-size: 0.66rem;
-            letter-spacing: 0.04em;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .tabla-ventas .moneda-valor {
-            font-size: 0.82rem;
-            font-weight: 700;
-        }
-
-        .tabla-ventas .moneda-usd {
-            background: rgba(31, 95, 57, 0.11);
-        }
-
-        .tabla-ventas .moneda-usd .moneda-tag {
-            background: #1f5f39;
-        }
-
-        .tabla-ventas .moneda-bs {
-            background: rgba(63, 79, 143, 0.11);
-        }
-
-        .tabla-ventas .moneda-bs .moneda-tag {
-            background: #3f4f8f;
-        }
-
-        @media (max-width: 1024px) {
-            .tabla-ventas {
-                display: block;
-                overflow-x: auto;
-            }
-
-            .tabla-ventas .col-servicio,
-            .tabla-ventas .col-pago-cliente,
-            .tabla-ventas .col-total,
-            .tabla-ventas .col-empleado {
-                min-width: 130px;
-            }
+        .sp-cop {
+            color: #8a5a12 !important;
         }
     </style>
-
 </Layout>
-

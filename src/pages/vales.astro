@@ -1,0 +1,141 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const fechaHoy = new Date();
+const ano = fechaHoy.getFullYear();
+const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0');
+const dia = String(fechaHoy.getDate()).padStart(2, '0');
+const fechaCompleta = `${ano}-${mes}-${dia}`;
+---
+
+<Layout>
+    <main class="container-general page-vales">
+        <h1>VALES</h1>
+
+        <div class="modulo-busqueda">
+            <div class="campo-busqueda">
+                <label for="fechaSeleccionada">Fecha</label>
+                <input type="date" id="fechaSeleccionada" value={fechaCompleta} />
+            </div>
+            <button id="buscarVales" type="button">Buscar Vales</button>
+        </div>
+
+        <section id="panelVales" class="sp-panel" hidden>
+            <div class="sp-panel-header">
+                <div>
+                    <p class="sp-eyebrow">Anticipos</p>
+                    <h2>Vales del día</h2>
+                </div>
+                <span id="contadorVales" class="sp-chip"></span>
+            </div>
+            <div class="sp-panel-body">
+                <table id="listaVales" class="sp-table"></table>
+            </div>
+        </section>
+
+        <p id="mensajeVacio" class="sp-msg-empty sp-panel" hidden style="padding:1.1rem;"></p>
+
+        <div class="container-boton_agregar">
+            <a href="/vales/agregar-vales" class="boton-agregar">Agregar Vale</a>
+        </div>
+    </main>
+
+    <script type="module">
+        const fmt = (n) => Number(n || 0).toFixed(2);
+
+        const colorMoneda = (moneda) => {
+            if (moneda === "USD") return "sp-money-usd";
+            if (moneda === "COP") return "sp-money-cop";
+            return "sp-money-bs";
+        };
+
+        const panelVales = document.getElementById("panelVales");
+        const mensajeVacio = document.getElementById("mensajeVacio");
+        const contadorVales = document.getElementById("contadorVales");
+        const listaVales = document.getElementById("listaVales");
+
+        const cargarVales = async () => {
+            const fecha = document.getElementById("fechaSeleccionada").value;
+            if (!fecha) {
+                alert("Selecciona una fecha.");
+                return;
+            }
+
+            const response = await fetch(`/api/vales?fecha=${fecha}`);
+            const data = await response.json();
+            const vales = data.vales || [];
+
+            if (!vales.length) {
+                panelVales.hidden = true;
+                mensajeVacio.hidden = false;
+                mensajeVacio.textContent = data.mensaje || "No hay vales para esa fecha.";
+                return;
+            }
+
+            mensajeVacio.hidden = true;
+            panelVales.hidden = false;
+            contadorVales.textContent = `${vales.length} vale${vales.length === 1 ? "" : "s"}`;
+
+            listaVales.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Empleada</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                        <th>Nota</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${vales.map((vale) => `
+                        <tr>
+                            <td>${vale.fecha}</td>
+                            <td><strong>${vale.empleada}</strong></td>
+                            <td>
+                                <div class="sp-money">
+                                    <div class="sp-money-item ${colorMoneda(vale.moneda)}">
+                                        <strong>${fmt(vale.monto)}</strong>
+                                        <span>${vale.moneda}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${vale.metodo_pago || "—"}</td>
+                            <td>${vale.nota || "—"}</td>
+                            <td class="sp-actions">
+                                <button type="button" class="boton-eliminar" data-id="${vale.id}">Eliminar</button>
+                            </td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            `;
+
+            listaVales.querySelectorAll(".boton-eliminar").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    if (!confirm("¿Eliminar este vale?")) return;
+                    const id = btn.getAttribute("data-id");
+                    const del = await fetch("/api/vales/delete", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id }),
+                    });
+                    if (!del.ok) {
+                        alert("No se pudo eliminar el vale.");
+                        return;
+                    }
+                    cargarVales();
+                });
+            });
+        };
+
+        document.getElementById("buscarVales").addEventListener("click", cargarVales);
+        document.addEventListener("DOMContentLoaded", cargarVales);
+    </script>
+
+    <style is:global>
+        .page-vales .sp-money-cop {
+            background: #f7f0e4;
+            color: #8a5a12;
+        }
+    </style>
+</Layout>

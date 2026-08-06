@@ -1,22 +1,23 @@
 import { createClient } from "@libsql/client";
+import {
+    ensureTasasTable,
+    METODOS_PAGO,
+    METODOS_PAGO_POR_MONEDA,
+    MONEDAS_PAGO,
+    getTasas,
+} from "../../../lib/ventas-schema.js";
 
 export async function GET() {
+    const db = createClient({
+        url: import.meta.env.DATABASE_URL,
+        authToken: import.meta.env.DATABASE_AUTH_TOKEN,
+    });
 
-    const db = createClient({   url: import.meta.env.DATABASE_URL,
-                                authToken: import.meta.env.DATABASE_AUTH_TOKEN // Agregar token
-                            });
+    await ensureTasasTable(db);
 
-    await db.execute(`
-        CREATE TABLE IF NOT EXISTS tasas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL UNIQUE,
-            value REAL NOT NULL DEFAULT 0
-        )
-    `);
-
-    await db.execute("INSERT OR IGNORE INTO tasas (nombre, value) VALUES ('bs', 0)");
-
-    const empleados = await db.execute("SELECT id, nombre, cargo FROM empleados WHERE estado = 'activo'");
+    const empleados = await db.execute(
+        "SELECT id, nombre, cargo FROM empleados WHERE estado = 'activo'"
+    );
     const servicios = await db.execute(`
         SELECT
             MIN(id) AS id,
@@ -27,16 +28,27 @@ export async function GET() {
         GROUP BY porcentaje_spabella, porcentaje_empleado
         ORDER BY porcentaje_spabella DESC, porcentaje_empleado ASC
     `);
-    const tasaBsResponse = await db.execute("SELECT value FROM tasas WHERE LOWER(nombre) = 'bs' LIMIT 1");
 
-    let empleadosEnvios = empleados.rows;
-    let serviciosEnvios = (servicios.rows || []).map((servicio) => ({
+    const tasas = await getTasas(db);
+    const empleadosEnvios = empleados.rows;
+    const serviciosEnvios = (servicios.rows || []).map((servicio) => ({
         ...servicio,
-        reparto: `SPA ${servicio.porcentaje_spabella}% / EMPLEADA ${servicio.porcentaje_empleado}%`
+        reparto: `SPA ${servicio.porcentaje_spabella}% / EMPLEADA ${servicio.porcentaje_empleado}%`,
     }));
-    const tasaBs = Number(tasaBsResponse.rows?.[0]?.value ?? 0);
 
-    return new Response(JSON.stringify({empleadosEnvios, serviciosEnvios, tasaBs}), {
-        headers: { "Content-Type": "application/json" }
-    });
+    return new Response(
+        JSON.stringify({
+            empleadosEnvios,
+            serviciosEnvios,
+            metodosPago: METODOS_PAGO,
+            metodosPagoPorMoneda: METODOS_PAGO_POR_MONEDA,
+            monedasPago: MONEDAS_PAGO,
+            tasas,
+            tasaBs: tasas.bs,
+            tasaCop: tasas.cop,
+        }),
+        {
+            headers: { "Content-Type": "application/json" },
+        }
+    );
 }

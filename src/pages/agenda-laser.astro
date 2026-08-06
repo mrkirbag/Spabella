@@ -1,0 +1,232 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+    <main class="container-general page-agenda-laser">
+        <h1>AGENDA LÁSER</h1>
+        <p class="agenda-lead">
+            Pacientes con <strong>paquete de láser de varias zonas</strong>. Al agendarlos quedan aquí para organizar mejor los tiempos.
+        </p>
+
+        <div class="modulo-busqueda">
+            <div class="campo-busqueda">
+                <label for="fechaSeleccionada">Fecha</label>
+                <input type="date" id="fechaSeleccionada" />
+            </div>
+            <button type="button" id="verProximos">Ver próximos 5 días</button>
+        </div>
+
+        <section id="panelLaser" class="sp-panel" hidden>
+            <div class="sp-panel-header header-laser">
+                <div>
+                    <p class="sp-eyebrow">Citas largas</p>
+                    <h2>Pacientes láser extendido</h2>
+                </div>
+                <span id="contadorLaser" class="sp-chip"></span>
+            </div>
+            <div class="sp-panel-body">
+                <table id="listaReservas" class="sp-table"></table>
+            </div>
+        </section>
+
+        <p id="mensajeVacio" class="sp-msg-empty sp-panel" hidden style="padding:1.1rem;"></p>
+
+        <div class="container-boton_agregar">
+            <a href="/reservas/agregar-reservas?tipo=laser" class="boton-agregar">Agregar Cita Láser</a>
+        </div>
+    </main>
+
+    <script type="module">
+        const table = document.getElementById("listaReservas");
+        const panelLaser = document.getElementById("panelLaser");
+        const mensajeVacio = document.getElementById("mensajeVacio");
+        const contadorLaser = document.getElementById("contadorLaser");
+        const fechaSeleccionadaInput = document.getElementById("fechaSeleccionada");
+
+        const renderReservas = (reservas) => {
+            if (reservas.mensaje) {
+                panelLaser.hidden = true;
+                mensajeVacio.hidden = false;
+                mensajeVacio.textContent = reservas.mensaje;
+                return;
+            }
+
+            mensajeVacio.hidden = true;
+            panelLaser.hidden = false;
+            contadorLaser.textContent = `${reservas.length} cita${reservas.length === 1 ? "" : "s"}`;
+
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+
+            const tbody = table.querySelector("tbody");
+
+            reservas.forEach((reserva) => {
+                const fechaObjeto = new Date(reserva.fecha + "T00:00:00");
+                const fechaFormateada = fechaObjeto.toLocaleDateString("es-ES", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                });
+
+                const celularLimpio = String(reserva.celular || "").replace(/\D/g, "");
+                let numeroWhatsapp = celularLimpio;
+                if (numeroWhatsapp.startsWith("0")) numeroWhatsapp = numeroWhatsapp.slice(1);
+                if (numeroWhatsapp.length === 9) numeroWhatsapp = `58${numeroWhatsapp}`;
+
+                const mensajeWhatsapp = encodeURIComponent(
+                    `Hola ${reserva.nombre.toUpperCase()}, te recordamos que tienes una cita de láser para el día ${fechaFormateada} de ${reserva.descripcion.toUpperCase()} en Spabella Stetic. ¡Te esperamos!`
+                );
+                const linkWhatsapp = numeroWhatsapp
+                    ? `https://wa.me/${numeroWhatsapp}?text=${mensajeWhatsapp}`
+                    : "#";
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>
+                        <strong>${reserva.nombre.toUpperCase()}</strong>
+                        <span class="badge-laser">Láser largo</span>
+                    </td>
+                    <td>
+                        <a href="${linkWhatsapp}" target="_blank" rel="noopener noreferrer" class="link-whatsapp">
+                            <span>0${reserva.celular}</span>
+                        </a>
+                    </td>
+                    <td>${fechaFormateada}</td>
+                    <td class="sp-desc"><strong>${reserva.descripcion.toUpperCase()}</strong></td>
+                    <td>
+                        <div class="acciones-reserva">
+                            <button type="button" class="boton-reprogramar">Reprogramar</button>
+                            <button type="button" class="boton-eliminar">Eliminar</button>
+                        </div>
+                    </td>
+                `;
+
+                tr.querySelector(".boton-reprogramar").addEventListener("click", () => {
+                    window.location.href = `/reservas/agregar-reservas?id=${reserva.id}`;
+                });
+
+                tr.querySelector(".boton-eliminar").addEventListener("click", async () => {
+                    if (!window.confirm("¿Seguro que deseas eliminar esta reserva?")) return;
+                    const deleteResponse = await fetch("/api/reservas/delete", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: reserva.id }),
+                    });
+                    const result = await deleteResponse.json();
+                    if (!deleteResponse.ok) {
+                        alert(result.error || "No se pudo eliminar.");
+                        return;
+                    }
+                    cargarReservas(fechaSeleccionadaInput.value || "");
+                });
+
+                tbody.appendChild(tr);
+            });
+        };
+
+        const cargarReservas = async (fecha = "") => {
+            const query = fecha
+                ? `?fecha=${encodeURIComponent(fecha)}&tipo=laser`
+                : `?tipo=laser`;
+            const response = await fetch(`/api/reservas/vista-reservas${query}`);
+            const reservas = await response.json();
+            renderReservas(reservas);
+        };
+
+        fechaSeleccionadaInput.addEventListener("change", () => {
+            if (!fechaSeleccionadaInput.value) return;
+            cargarReservas(fechaSeleccionadaInput.value);
+        });
+
+        document.getElementById("verProximos").addEventListener("click", () => {
+            fechaSeleccionadaInput.value = "";
+            cargarReservas();
+        });
+
+        document.addEventListener("DOMContentLoaded", () => cargarReservas());
+    </script>
+
+    <style is:global>
+        .page-agenda-laser .agenda-lead {
+            max-width: 640px;
+            margin: -0.35rem auto 1.1rem;
+            color: #6f675c;
+            font-size: 0.92rem;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+        }
+
+        .page-agenda-laser .header-laser {
+            background: linear-gradient(135deg, #c48a2e 0%, #ddb57f 100%);
+        }
+
+        .page-agenda-laser .header-laser h2,
+        .page-agenda-laser .header-laser .sp-eyebrow {
+            color: #fff !important;
+            margin: 0 !important;
+            text-align: left !important;
+        }
+
+        .page-agenda-laser .header-laser .sp-eyebrow {
+            opacity: 0.85;
+        }
+
+        .page-agenda-laser .header-laser .sp-chip {
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+        }
+
+        .page-agenda-laser .badge-laser {
+            display: inline-block;
+            margin-top: 0.3rem;
+            background: #f7f0e4;
+            color: #8a5a12;
+            border-radius: 999px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .page-agenda-laser .link-whatsapp {
+            color: #4d4d4d;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .page-agenda-laser .link-whatsapp:hover {
+            color: #c48a2e;
+        }
+
+        .page-agenda-laser .acciones-reserva {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .page-agenda-laser .container-boton_agregar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .page-agenda-laser .boton-secundario {
+            background: #4d4d4d;
+            color: #fff;
+        }
+    </style>
+</Layout>

@@ -1,0 +1,172 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const fechaHoy = new Date();
+const ano = fechaHoy.getFullYear();
+const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0');
+const dia = String(fechaHoy.getDate()).padStart(2, '0');
+const fechaCompleta = `${ano}-${mes}-${dia}`;
+---
+
+<Layout>
+    <main class="container-general page-agregar-vale">
+        <h1>AGREGAR VALE</h1>
+
+        <form id="formulario" class="form-vale">
+            <p class="form-section-title">Datos del vale</p>
+
+            <div class="campo">
+                <label for="fecha">Fecha</label>
+                <input type="date" name="fecha" id="fecha" value={fechaCompleta} />
+            </div>
+
+            <div class="campo">
+                <label for="empleado-id">Empleada</label>
+                <select name="empleado-id" id="empleado-id">
+                    <option value="">Selecciona</option>
+                </select>
+            </div>
+
+            <div class="campo-row">
+                <div class="campo">
+                    <label for="moneda">Moneda</label>
+                    <select name="moneda" id="moneda">
+                        <option value="USD">USD</option>
+                        <option value="COP">COP</option>
+                        <option value="BS">BS</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="monto">Monto</label>
+                    <input type="text" name="monto" id="monto" placeholder="0.00" />
+                </div>
+            </div>
+
+            <div class="campo">
+                <label for="metodo-pago">Método de pago</label>
+                <select name="metodo-pago" id="metodo-pago">
+                    <option value="">Selecciona</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="nota">Nota (opcional)</label>
+                <input type="text" name="nota" id="nota" placeholder="Ej: Anticipo quincena..." />
+            </div>
+
+            <button type="submit">Guardar vale</button>
+        </form>
+    </main>
+
+    <script type="module">
+        const metodosPorMoneda = {
+            COP: ["Efectivo", "Bancolombia", "Nequi"],
+            USD: ["Efectivo", "Zelle", "Binance"],
+            BS: ["Pago móvil"],
+        };
+
+        const selectMetodo = document.getElementById("metodo-pago");
+        const selectMoneda = document.getElementById("moneda");
+        const selectEmpleado = document.getElementById("empleado-id");
+
+        const llenarMetodos = () => {
+            const moneda = selectMoneda.value;
+            const metodos = metodosPorMoneda[moneda] || [];
+            selectMetodo.innerHTML = `<option value="">Selecciona</option>`;
+            metodos.forEach((m) => {
+                const opt = document.createElement("option");
+                opt.value = m;
+                opt.textContent = m;
+                selectMetodo.appendChild(opt);
+            });
+        };
+
+        const cargarEmpleados = async () => {
+            const response = await fetch("/api/empleados");
+            const data = await response.json();
+            if (data.mensaje || !Array.isArray(data)) return;
+
+            data.forEach((emp) => {
+                const opt = document.createElement("option");
+                opt.value = emp.id;
+                opt.textContent = emp.nombre;
+                selectEmpleado.appendChild(opt);
+            });
+        };
+
+        selectMoneda.addEventListener("change", llenarMetodos);
+        llenarMetodos();
+        cargarEmpleados();
+
+        document.getElementById("formulario").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const fecha = document.getElementById("fecha").value;
+            const empleadoId = document.getElementById("empleado-id").value;
+            const moneda = document.getElementById("moneda").value;
+            const monto = Number(String(document.getElementById("monto").value).replace(",", "."));
+            const metodoPago = document.getElementById("metodo-pago").value;
+            const nota = document.getElementById("nota").value.trim();
+
+            if (!fecha || !empleadoId || !moneda || !metodoPago || !Number.isFinite(monto) || monto <= 0) {
+                alert("Completa fecha, empleada, moneda, monto y método.");
+                return;
+            }
+
+            const response = await fetch("/api/vales", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fecha, empleadoId, moneda, monto, metodoPago, nota }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data.error || "No se pudo guardar el vale.");
+                return;
+            }
+
+            window.location.href = `/vales`;
+        });
+    </script>
+
+    <style is:global>
+        .page-agregar-vale .form-vale {
+            width: min(480px, 100%);
+        }
+
+        .page-agregar-vale .form-section-title {
+            margin: 0 0 0.35rem;
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #6f675c;
+        }
+
+        .page-agregar-vale .campo {
+            width: 100%;
+        }
+
+        .page-agregar-vale .campo-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .page-agregar-vale form label {
+            width: 100%;
+            margin: 0 0 0.3rem;
+        }
+
+        .page-agregar-vale form select,
+        .page-agregar-vale form input {
+            width: 100%;
+        }
+
+        @media (max-width: 560px) {
+            .page-agregar-vale .campo-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</Layout>

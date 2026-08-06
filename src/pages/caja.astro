@@ -1,0 +1,278 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const fechaHoy = new Date();
+const ano = fechaHoy.getFullYear();
+const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0');
+const dia = String(fechaHoy.getDate()).padStart(2, '0');
+const fechaCompleta = `${ano}-${mes}-${dia}`;
+---
+
+<Layout>
+    <main class="container-general page-caja">
+        <h1>FLUJO DE CAJA</h1>
+
+        <div class="modulo-busqueda">
+            <div class="campo-busqueda">
+                <label for="fechaSeleccionada">Fecha</label>
+                <input type="date" id="fechaSeleccionada" value={fechaCompleta} />
+            </div>
+            <button id="buscarCaja" type="button">Ver Movimientos</button>
+        </div>
+
+        <section id="resumenCaja" class="sp-panel" hidden></section>
+
+        <section id="panelTx" class="sp-panel" hidden>
+            <div class="sp-panel-header">
+                <div>
+                    <p class="sp-eyebrow">Movimientos</p>
+                    <h2>Transacciones del día</h2>
+                </div>
+                <span id="contadorTx" class="sp-chip"></span>
+            </div>
+            <div class="sp-panel-body">
+                <table id="listaTx" class="sp-table"></table>
+            </div>
+        </section>
+
+        <p id="mensajeVacio" class="sp-msg-empty sp-panel" hidden style="padding:1.1rem;"></p>
+
+        <div class="container-boton_agregar">
+            <a href="/vales/agregar-vales" class="boton-agregar">Agregar Vale</a>
+            <a href="/ventas/agregar-ventas" class="boton-agregar">Agregar Venta</a>
+        </div>
+    </main>
+
+    <script type="module">
+        const fmt = (n) => Number(n || 0).toFixed(2);
+
+        const colorMoneda = (moneda) => {
+            if (moneda === "USD") return "sp-money-usd";
+            if (moneda === "COP") return "sp-money-cop";
+            return "sp-money-bs";
+        };
+
+        const resumenCaja = document.getElementById("resumenCaja");
+        const panelTx = document.getElementById("panelTx");
+        const mensajeVacio = document.getElementById("mensajeVacio");
+        const contadorTx = document.getElementById("contadorTx");
+        const listaTx = document.getElementById("listaTx");
+
+        const tarjeta = (label, data, extraClass = "") => `
+            <div class="caja-grupo ${extraClass}">
+                <p class="caja-grupo-titulo">${label}</p>
+                <div class="sp-totales caja-mini">
+                    <div class="sp-total sp-total-usd">
+                        <span>USD</span>
+                        <strong>${fmt(data?.usd)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-cop">
+                        <span>COP</span>
+                        <strong>${fmt(data?.cop)}</strong>
+                    </div>
+                    <div class="sp-total sp-total-bs">
+                        <span>BS</span>
+                        <strong>${fmt(data?.bs)}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const cargarCaja = async () => {
+            const fecha = document.getElementById("fechaSeleccionada").value;
+            if (!fecha) {
+                alert("Selecciona una fecha.");
+                return;
+            }
+
+            const response = await fetch(`/api/caja?fecha=${fecha}`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            const resumen = data.resumen || {};
+            const txs = data.transacciones || [];
+            const tasas = data.tasas || {};
+
+            if (!txs.length) {
+                resumenCaja.hidden = true;
+                panelTx.hidden = true;
+                mensajeVacio.hidden = false;
+                mensajeVacio.textContent = "No hay transacciones para esa fecha.";
+                return;
+            }
+
+            mensajeVacio.hidden = true;
+            resumenCaja.hidden = false;
+            panelTx.hidden = false;
+
+            resumenCaja.innerHTML = `
+                <div class="sp-panel-header">
+                    <div>
+                        <p class="sp-eyebrow">Resumen del día</p>
+                        <h2>Flujo de caja</h2>
+                    </div>
+                    <span class="sp-chip">
+                        ${resumen.totalVentas || 0} ventas · ${resumen.totalVales || 0} vales
+                        · BS ${tasas.bs > 0 ? fmt(tasas.bs) : "N/D"} · COP ${tasas.cop > 0 ? fmt(tasas.cop) : "N/D"}
+                    </span>
+                </div>
+                ${tarjeta("Entradas (ventas)", resumen.ingresos, "grupo-ingreso")}
+                ${tarjeta("Salidas (vales)", resumen.egresos, "grupo-egreso")}
+                ${tarjeta("Neto en caja", resumen.neto, "grupo-neto")}
+            `;
+
+            contadorTx.textContent = `${txs.length} movimiento${txs.length === 1 ? "" : "s"}`;
+
+            listaTx.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Fecha</th>
+                        <th>Detalle</th>
+                        <th>Empleada</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${txs.map((tx) => `
+                        <tr class="tx-row tx-${tx.tipo}">
+                            <td>
+                                <span class="tx-badge ${tx.tipo}">
+                                    ${tx.tipo === "ingreso" ? "Entrada" : "Salida"}
+                                </span>
+                                <small class="tx-origen">${tx.origen === "venta" ? "Venta" : "Vale"}</small>
+                            </td>
+                            <td class="tx-fecha">${tx.fecha}</td>
+                            <td class="sp-desc">
+                                <strong>${tx.descripcion || "—"}</strong>
+                            </td>
+                            <td><strong>${tx.empleada || "—"}</strong></td>
+                            <td>
+                                <div class="sp-money">
+                                    <div class="sp-money-item ${colorMoneda(tx.moneda)}">
+                                        <strong>${tx.tipo === "egreso" ? "−" : ""}${fmt(tx.monto)}</strong>
+                                        <span>${tx.moneda}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${tx.metodo || "—"}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            `;
+        };
+
+        document.getElementById("buscarCaja").addEventListener("click", cargarCaja);
+        document.addEventListener("DOMContentLoaded", cargarCaja);
+    </script>
+
+    <style is:global>
+        .page-caja .sp-panel-header h2 {
+            margin: 0 !important;
+            text-align: left !important;
+        }
+
+        .page-caja .sp-money-cop,
+        .page-caja .sp-total-cop {
+            background: #f7f0e4;
+            color: #8a5a12;
+        }
+
+        .page-caja .sp-total-cop {
+            border-left: 5px solid #c48a2e;
+        }
+
+        .page-caja .caja-grupo {
+            margin: 0.85rem 1.15rem 0;
+            border: 1px solid #eadfce;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .page-caja .caja-grupo-titulo {
+            margin: 0;
+            padding: 0.55rem 0.9rem;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        .page-caja .grupo-ingreso .caja-grupo-titulo {
+            background: #e8f4ec;
+            color: #1f5f39;
+        }
+
+        .page-caja .grupo-egreso .caja-grupo-titulo {
+            background: #fdeaea;
+            color: #9b3b3b;
+        }
+
+        .page-caja .grupo-neto .caja-grupo-titulo {
+            background: #f3eee5;
+            color: #4d4d4d;
+        }
+
+        .page-caja .caja-mini {
+            padding: 0.75rem !important;
+            margin: 0;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .page-caja .tx-badge {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 0.2rem 0.55rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+        }
+
+        .page-caja .tx-badge.ingreso {
+            background: #e8f4ec;
+            color: #1f5f39;
+        }
+
+        .page-caja .tx-badge.egreso {
+            background: #fdeaea;
+            color: #9b3b3b;
+        }
+
+        .page-caja .tx-origen {
+            display: block;
+            margin-top: 0.25rem;
+            color: #9a8f80;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        .page-caja .tx-fecha {
+            white-space: nowrap;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .page-caja .tx-egreso {
+            background: #fff8f8;
+        }
+
+        .page-caja .container-boton_agregar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .page-caja .caja-mini {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</Layout>

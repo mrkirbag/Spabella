@@ -33,6 +33,14 @@ import Layout from '../../layouts/Layout.astro';
             <input type="date" name="fecha" id="fecha" placeholder="Fecha de la compra" />
             <br />
 
+            <label class="check-laser-paquete" for="laser-grande">
+                <input type="checkbox" id="laser-grande" name="laser-grande" />
+                <span>
+                    <strong>Láser varias zonas (paquete grande)</strong>
+                    <small>Marca esto si el paquete cubre varias partes del cuerpo. Al agendar, este paciente saldrá destacado y irá a Agenda Láser.</small>
+                </span>
+            </label>
+
             <button type="submit" style="margin-top: 40px;">Agregar</button>
         </form>
     </main>
@@ -56,6 +64,43 @@ import Layout from '../../layouts/Layout.astro';
         #buscar-cliente:focus {
             outline: none;
             border-bottom: 2px solid #DDB57F;
+        }
+
+        .check-laser-paquete {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            width: min(480px, 100%);
+            margin: 0.75rem auto 0.25rem;
+            padding: 0.85rem 0.95rem;
+            border-radius: 12px;
+            border: 1px solid #eadfce;
+            background: linear-gradient(180deg, #fff8ee 0%, #fff 100%);
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .check-laser-paquete input {
+            width: 18px;
+            height: 18px;
+            margin-top: 0.15rem;
+            flex-shrink: 0;
+            accent-color: #c48a2e;
+        }
+
+        .check-laser-paquete strong {
+            display: block;
+            color: #4d4d4d;
+            font-size: 0.92rem;
+        }
+
+        .check-laser-paquete small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #7a7165;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.35;
         }
 
     </style>
@@ -123,6 +168,7 @@ import Layout from '../../layouts/Layout.astro';
 
             const montoTotal = Number(monto);
             const nroSesionesTotal = Number(nroSesiones);
+            const laserGrande = document.getElementById("laser-grande").checked;
 
             // Validar campos
             if (descripcion === '' || montoTotal === '' || fecha === '' || clienteId === '' || nroSesionesTotal === '') {
@@ -136,8 +182,6 @@ import Layout from '../../layouts/Layout.astro';
                 return;
             }
 
-            console.log(montoTotal, nroSesionesTotal, descripcion, fecha, clienteId);
-
             // Enviar datos al servidor
             const url = "/api/paquetesMariana";
             fetch(url, {
@@ -145,7 +189,7 @@ import Layout from '../../layouts/Layout.astro';
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ descripcion, nroSesionesTotal, montoTotal, fecha, clienteId }),
+                body: JSON.stringify({ descripcion, nroSesionesTotal, montoTotal, fecha, clienteId, laserGrande }),
             })
             .then((response) => {
                 if (!response.ok) {
