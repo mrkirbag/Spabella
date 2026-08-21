@@ -1,5 +1,4 @@
 import { createClient } from "@libsql/client";
-import { ensureReservasColumns } from "../../../lib/reservas-schema.js";
 
 export async function GET({ request }) {
     const url = new URL(request.url);
@@ -12,8 +11,6 @@ export async function GET({ request }) {
     });
 
     try {
-        await ensureReservasColumns(db);
-
         // laser = solo láser grande; todas/normal = todas (con flag para diferenciar en UI)
         const filtroLaser =
             tipo === "laser"

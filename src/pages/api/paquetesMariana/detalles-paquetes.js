@@ -1,6 +1,5 @@
 import { createClient } from "@libsql/client";
 import {
-    ensurePaquetesColumns,
     esPaqueteLaserGrande,
     normalizarLaserGrande,
 } from "../../../lib/paquetes-schema.js";
@@ -16,7 +15,6 @@ export async function GET({ request }) {
     const idPaquete = url.searchParams.get("id");
 
     const db = dbClient();
-    await ensurePaquetesColumns(db);
 
     const detallesPaquete = await db.execute(
         `
@@ -65,7 +63,6 @@ export async function POST({ request }) {
         }
 
         const db = dbClient();
-        await ensurePaquetesColumns(db);
 
         const laser = normalizarLaserGrande(laserGrande);
         await db.execute(

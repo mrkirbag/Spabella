@@ -56,3 +56,12 @@ CREATE TABLE IF NOT EXISTS vales (
     nota TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (empleado_id) REFERENCES empleados(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
+CREATE INDEX IF NOT EXISTS idx_venta_pagos_venta_id ON venta_pagos(venta_id);
+CREATE INDEX IF NOT EXISTS idx_vales_fecha ON vales(fecha);
+CREATE INDEX IF NOT EXISTS idx_vales_empleado ON vales(empleado_id);
+CREATE INDEX IF NOT EXISTS idx_reservas_fecha ON reservas(fecha);
+CREATE INDEX IF NOT EXISTS idx_reservas_cliente ON reservas(id_cliente);
+CREATE INDEX IF NOT EXISTS idx_paquetes_cliente ON paquetes(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_sesiones_paquete ON sesiones(paquete_id, numero_sesion);

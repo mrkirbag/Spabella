@@ -1,11 +1,5 @@
 import { createClient } from "@libsql/client";
-import {
-    ensureTasasTable,
-    ensureValesTable,
-    ensureVentaPagosTable,
-    ensureVentasColumns,
-    getTasas,
-} from "../../../lib/ventas-schema.js";
+import { getTasas } from "../../../lib/ventas-schema.js";
 
 const redondear = (n) => Number(Number(n || 0).toFixed(2));
 
@@ -70,11 +64,6 @@ export async function GET({ request }) {
             url: import.meta.env.DATABASE_URL,
             authToken: import.meta.env.DATABASE_AUTH_TOKEN,
         });
-
-        await ensureTasasTable(db);
-        await ensureVentasColumns(db);
-        await ensureVentaPagosTable(db);
-        await ensureValesTable(db);
 
         const tasas = await getTasas(db);
 

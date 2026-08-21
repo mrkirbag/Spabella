@@ -1,5 +1,4 @@
 import { createClient } from "@libsql/client";
-import { ensureValesTable } from "../../../lib/ventas-schema.js";
 
 export async function POST({ request }) {
     try {
@@ -18,7 +17,6 @@ export async function POST({ request }) {
             authToken: import.meta.env.DATABASE_AUTH_TOKEN,
         });
 
-        await ensureValesTable(db);
         await db.execute("DELETE FROM vales WHERE id = ?", [valeId]);
 
         return new Response(

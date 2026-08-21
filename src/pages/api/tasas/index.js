@@ -1,5 +1,5 @@
 import { createClient } from "@libsql/client";
-import { ensureTasasTable, getTasas } from "../../../lib/ventas-schema.js";
+import { getTasas } from "../../../lib/ventas-schema.js";
 
 const getDb = () =>
     createClient({
@@ -38,7 +38,6 @@ export async function PUT({ request }) {
     try {
         const body = await request.json();
         const db = getDb();
-        await ensureTasasTable(db);
 
         // Nuevo formato: { bs, cop } o individual { moneda, value }
         let bs = body.bs ?? body.tasaBs;
@@ -68,7 +67,7 @@ export async function PUT({ request }) {
                 );
             }
             await db.execute(
-                "UPDATE tasas SET value = ? WHERE LOWER(nombre) = 'bs'",
+                "UPDATE tasas SET value = ? WHERE nombre = 'bs'",
                 [tasaBs]
             );
             updates.push({ moneda: "bs", value: tasaBs });
@@ -85,7 +84,7 @@ export async function PUT({ request }) {
                 );
             }
             await db.execute(
-                "UPDATE tasas SET value = ? WHERE LOWER(nombre) = 'cop'",
+                "UPDATE tasas SET value = ? WHERE nombre = 'cop'",
                 [tasaCop]
             );
             updates.push({ moneda: "cop", value: tasaCop });

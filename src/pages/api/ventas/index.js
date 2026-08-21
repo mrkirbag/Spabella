@@ -1,8 +1,5 @@
 import { createClient } from "@libsql/client";
 import {
-    ensureTasasTable,
-    ensureVentasColumns,
-    ensureVentaPagosTable,
     getTasas,
     normalizarMetodoPago,
     normalizarMoneda,
@@ -24,10 +21,6 @@ export async function POST({ request }) {
             url: import.meta.env.DATABASE_URL,
             authToken: import.meta.env.DATABASE_AUTH_TOKEN,
         });
-
-        await ensureTasasTable(db);
-        await ensureVentasColumns(db);
-        await ensureVentaPagosTable(db);
 
         const montoTotalUsdValor = Number(montoTotalUsd ?? 0);
         const listaPagos = Array.isArray(pagos) ? pagos : [];

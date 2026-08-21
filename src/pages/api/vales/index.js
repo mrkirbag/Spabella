@@ -1,6 +1,5 @@
 import { createClient } from "@libsql/client";
 import {
-    ensureValesTable,
     METODOS_PAGO_POR_MONEDA,
     MONEDAS_PAGO,
     normalizarMetodoPago,
@@ -18,7 +17,6 @@ export async function GET({ request }) {
         const url = new URL(request.url);
         const fecha = url.searchParams.get("fecha");
         const db = dbClient();
-        await ensureValesTable(db);
 
         if (!fecha) {
             return new Response(
@@ -100,7 +98,6 @@ export async function POST({ request }) {
         }
 
         const db = dbClient();
-        await ensureValesTable(db);
 
         const empleado = await db.execute(
             "SELECT id FROM empleados WHERE id = ? AND estado = 'activo'",

@@ -28,9 +28,8 @@ export const ensureTasasTable = async (db) => {
 };
 
 export const getTasas = async (db) => {
-    await ensureTasasTable(db);
     const response = await db.execute(
-        "SELECT LOWER(nombre) AS nombre, value FROM tasas WHERE LOWER(nombre) IN ('bs', 'cop')"
+        "SELECT nombre, value FROM tasas WHERE nombre IN ('bs', 'cop')"
     );
 
     const tasas = { bs: 0, cop: 0 };
@@ -68,16 +67,6 @@ export const ensureVentasColumns = async (db) => {
     await addColumn("monto_cop_raw", "monto_cop_raw REAL NOT NULL DEFAULT 0");
     await addColumn("tasa_cop", "tasa_cop REAL NOT NULL DEFAULT 0");
     await addColumn("metodo_pago_cop", "metodo_pago_cop TEXT NOT NULL DEFAULT ''");
-
-    await db.execute(`
-        UPDATE ventas
-        SET monto_usd = monto,
-            monto_bs = 0
-        WHERE COALESCE(monto_usd, 0) = 0
-          AND COALESCE(monto_bs, 0) = 0
-          AND COALESCE(monto_cop, 0) = 0
-          AND COALESCE(monto, 0) > 0
-    `);
 };
 
 export const ensureVentaPagosTable = async (db) => {

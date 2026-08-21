@@ -1,8 +1,5 @@
 import { createClient } from "@libsql/client";
-import {
-    ensureReservasColumns,
-    normalizarLaserLargo,
-} from "../../../lib/reservas-schema.js";
+import { normalizarLaserLargo } from "../../../lib/reservas-schema.js";
 
 const dbClient = () =>
     createClient({
@@ -23,7 +20,6 @@ export async function GET({ request }) {
         }
 
         const db = dbClient();
-        await ensureReservasColumns(db);
 
         const reserva = await db.execute(
             `SELECT id, fecha, descripcion, id_cliente, COALESCE(laser_largo, 0) AS laser_largo
@@ -61,7 +57,6 @@ export async function POST({ request }) {
         }
 
         const db = dbClient();
-        await ensureReservasColumns(db);
 
         await db.execute(
             `INSERT INTO reservas (fecha, descripcion, id_cliente, laser_largo)
@@ -97,7 +92,6 @@ export async function PUT({ request }) {
         }
 
         const db = dbClient();
-        await ensureReservasColumns(db);
 
         const laser =
             laserLargo === undefined || laserLargo === null

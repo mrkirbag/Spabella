@@ -1,6 +1,5 @@
 import { createClient } from "@libsql/client";
 import {
-    ensureTasasTable,
     METODOS_PAGO,
     METODOS_PAGO_POR_MONEDA,
     MONEDAS_PAGO,
@@ -12,8 +11,6 @@ export async function GET() {
         url: import.meta.env.DATABASE_URL,
         authToken: import.meta.env.DATABASE_AUTH_TOKEN,
     });
-
-    await ensureTasasTable(db);
 
     const empleados = await db.execute(
         "SELECT id, nombre, cargo FROM empleados WHERE estado = 'activo'"

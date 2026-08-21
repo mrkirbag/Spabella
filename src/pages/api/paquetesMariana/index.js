@@ -1,8 +1,5 @@
 import { createClient } from "@libsql/client";
-import {
-    ensurePaquetesColumns,
-    normalizarLaserGrande,
-} from "../../../lib/paquetes-schema.js";
+import { normalizarLaserGrande } from "../../../lib/paquetes-schema.js";
 
 export async function POST({ request }) {
     try {
@@ -19,8 +16,6 @@ export async function POST({ request }) {
             url: import.meta.env.DATABASE_URL,
             authToken: import.meta.env.DATABASE_AUTH_TOKEN,
         });
-
-        await ensurePaquetesColumns(db);
 
         if (!descripcion || !montoTotal || !fecha || !clienteId || !nroSesionesTotal) {
             return new Response(

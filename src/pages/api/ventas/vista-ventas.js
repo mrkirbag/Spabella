@@ -1,10 +1,5 @@
 import { createClient } from "@libsql/client";
-import {
-    ensureTasasTable,
-    ensureVentasColumns,
-    ensureVentaPagosTable,
-    getTasas,
-} from "../../../lib/ventas-schema.js";
+import { getTasas } from "../../../lib/ventas-schema.js";
 
 const acumular = (mapa, clave, montos) => {
     if (!clave) return;
@@ -92,10 +87,6 @@ export async function GET({ request }) {
         url: import.meta.env.DATABASE_URL,
         authToken: import.meta.env.DATABASE_AUTH_TOKEN,
     });
-
-    await ensureTasasTable(db);
-    await ensureVentasColumns(db);
-    await ensureVentaPagosTable(db);
 
     const tasas = await getTasas(db);
 

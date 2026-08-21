@@ -1,5 +1,4 @@
 import { createClient } from "@libsql/client";
-import { ensureVentaPagosTable } from "../../../lib/ventas-schema.js";
 
 const ADMIN_KEY_NAME = "ventas_admin_delete_key";
 const DEFAULT_ADMIN_KEY = "clavesecreta";
@@ -55,7 +54,6 @@ export async function DELETE({ request }) {
             );
         }
 
-        await ensureVentaPagosTable(db);
         await db.execute("DELETE FROM venta_pagos WHERE venta_id = ?", [id]);
 
         const result = await db.execute("DELETE FROM ventas WHERE id = ?", [id]);

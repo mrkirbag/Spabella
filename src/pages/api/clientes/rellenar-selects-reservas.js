@@ -1,16 +1,11 @@
 import { createClient } from "@libsql/client";
-import {
-    ensurePaquetesColumns,
-    esPaqueteLaserGrande,
-} from "../../../lib/paquetes-schema.js";
+import { esPaqueteLaserGrande } from "../../../lib/paquetes-schema.js";
 
 export async function GET() {
     const db = createClient({
         url: import.meta.env.DATABASE_URL,
         authToken: import.meta.env.DATABASE_AUTH_TOKEN,
     });
-
-    await ensurePaquetesColumns(db);
 
     const clientes = await db.execute(
         "SELECT id, nombre, celular FROM clientes ORDER BY nombre ASC"
@@ -24,12 +19,14 @@ export async function GET() {
             p.descripcion,
             p.numero_sesiones,
             COALESCE(p.laser_grande, 0) AS laser_grande,
-            (
-                SELECT COUNT(*)
-                FROM sesiones s
-                WHERE s.paquete_id = p.id AND s.numero_sesion > 0
-            ) AS sesiones_usadas
+            COALESCE(s.sesiones_usadas, 0) AS sesiones_usadas
         FROM paquetes p
+        LEFT JOIN (
+            SELECT paquete_id, COUNT(*) AS sesiones_usadas
+            FROM sesiones
+            WHERE numero_sesion > 0
+            GROUP BY paquete_id
+        ) s ON s.paquete_id = p.id
         `
     );
 
